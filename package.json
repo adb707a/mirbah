@@ -1,0 +1,16 @@
+{
+  "name": "mirbah-open",
+  "version": "3.0.0",
+  "private": true,
+  "description": "مِرْباح — منصة تسعير: دفتر V3 + حسابات التجار + لوحة التاجر + لوحة المالك",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node tools/start-platform.js",
+    "dev": "node tools/start-platform.js",
+    "test": "node tests/platform.test.js",
+    "test:calc": "node public/tests/calc.test.js && node public/tests/suggestions.test.js",
+    "backup": "node -e \"console.log(require('./server/db').backup('cli'))\"",
+    "db:reset": "node tools/reset-db.js --force"
+  },
+  "engines": { "node": ">=22" }
+}

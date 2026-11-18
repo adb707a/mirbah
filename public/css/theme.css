@@ -1,0 +1,361 @@
+/* =============================================================
+   دَفْتَر (DAFTAR) — دفتر حساب ورقيّ دافئ لمِرْباح
+   مراجع: Money in Check (ورق كريمي، أرقام عارية، عنوان صغير) ·
+   Designspiration (لوحات ألوان) · Haikei (بقع SVG مرسومة يدويًا) ·
+   Animista (easeOutCubic/Back) · Really Good Emails (سطر واحد للسطر).
+   ============================================================= */
+
+:root {
+  --df-paper: #f3ecdd;
+  --df-paper-2: #ece3d0;
+  --df-page: #fdf9f0;
+  --df-ink: #33291f;
+  --df-ink-2: #5c5040;
+  --df-ink-3: #93856e;
+  --df-rule: #d9cbb0;
+  --df-rule-2: #c6b596;
+  --df-clay: #a8552f;
+  --df-clay-soft: #f2ddcf;
+  --df-blue: #26406b;
+  --df-blue-soft: #dde5ee;
+  --df-sage: #7c8a63;
+
+  --bg: var(--df-paper);
+  --card-bg: var(--df-page);
+  --ink: var(--df-ink);
+  --ink-2: var(--df-ink-2);
+  --ink-3: var(--df-ink-3);
+  --line: var(--df-rule);
+  --accent: var(--df-clay);
+  --good: #44613a;
+  --good-bg: #e5ecdb;
+  --bad: #9c3a22;
+  --bad-bg: #f6e0d5;
+  --warn: #7f5f18;
+  --warn-bg: #f5ead0;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --shadow: 0 8px 22px rgba(80, 60, 30, .07);
+  --shadow-hover: 0 12px 26px rgba(80, 60, 30, .1);
+  --font-ui: 'Rubik', 'Segoe UI', system-ui, sans-serif;
+  --font-text: 'IBM Plex Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+  --font-ser: 'Amiri', 'Times New Roman', serif;
+}
+
+* { box-sizing: border-box; }
+
+.df-body {
+  margin: 0;
+  background:
+    radial-gradient(900px 480px at 92% -8%, rgba(168, 85, 47, .08), transparent 62%),
+    radial-gradient(720px 420px at 2% 12%, rgba(124, 138, 99, .1), transparent 64%),
+    var(--df-paper);
+  color: var(--df-ink);
+  font-family: var(--font-text);
+  font-size: 15.5px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+}
+.df-body p, .df-body h1, .df-body h2, .df-body h3, .df-body h4 { font-family: inherit; }
+.df-leaf { position: fixed; pointer-events: none; z-index: 0; opacity: .7; }
+.df-leaf path { fill: rgba(124, 138, 99, .1); }
+.df-leaf-a { width: 420px; inset-inline-start: -150px; inset-block-start: 26%; transform: rotate(12deg); }
+.df-leaf-b { width: 300px; inset-inline-end: -110px; inset-block-start: 58%; transform: rotate(-24deg); }
+
+.df-top, .df-main, .df-foot { position: relative; z-index: 1; }
+
+/* ---------------- الشريط العلوي ---------------- */
+.df-top {
+  display: flex; align-items: center; gap: 18px;
+  padding: 18px clamp(16px, 4vw, 56px);
+  max-width: 1180px; margin: 0 auto;
+  border-block-end: 1px solid var(--df-rule);
+}
+.df-mark { display: inline-flex; align-items: baseline; gap: 9px; text-decoration: none; color: var(--df-ink); }
+.df-mark b { font-family: var(--font-ui); font-size: 1.4rem; font-weight: 500; letter-spacing: -.02em; }
+.df-mark span { font-size: .66rem; letter-spacing: .18em; color: var(--df-clay); }
+.df-tabs { display: flex; gap: 18px; margin-inline-start: auto; font-size: .8rem; }
+.df-tabs a, .df-tabs button {
+  appearance: none; border: 0; background: none; cursor: pointer; font: inherit; color: var(--df-ink-2);
+  text-decoration: none; padding: 2px 0; border-block-end: 1px solid transparent;
+}
+.df-tabs a:hover, .df-tabs button:hover { color: var(--df-clay); border-block-end-color: var(--df-clay); }
+.df-btn {
+  appearance: none; cursor: pointer; font-family: var(--font-ui); font-size: .84rem; font-weight: 500;
+  border-radius: 999px; padding: 9px 18px; min-height: 38px;
+  border: 1px solid var(--df-ink); background: var(--df-ink); color: var(--df-page);
+  transition: background .2s ease, border-color .2s ease;
+}
+.df-btn:hover { background: var(--df-clay); border-color: var(--df-clay); }
+.df-btn-quiet { background: transparent; color: var(--df-ink); border-color: var(--df-rule-2); }
+.df-btn-quiet:hover { background: transparent; border-color: var(--df-clay); color: var(--df-clay); }
+.df-btn:focus-visible, .df-tabs a:focus-visible, .df-tabs button:focus-visible, .df-sheet:focus-visible { outline: 2px solid var(--df-clay); outline-offset: 3px; }
+
+.df-main { max-width: 1180px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 56px); }
+
+/* ---------------- الغلاف: صفحة عنوان كتاب ---------------- */
+.df-cover {
+  position: relative;
+  padding-block: clamp(30px, 6vw, 76px) clamp(26px, 4vw, 54px);
+  display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: clamp(24px, 5vw, 64px);
+  align-items: end;
+}
+.df-cover::before {
+  content: ''; position: absolute; inset-inline-start: 0; inset-block: 8% 4%;
+  width: 1px; background: var(--df-rule);
+}
+.df-folio {
+  display: flex; align-items: baseline; gap: 12px;
+  font-size: .68rem; letter-spacing: .16em; color: var(--df-ink-3); text-transform: uppercase;
+}
+.df-folio b { color: var(--df-clay); font-weight: 500; letter-spacing: .04em; }
+.df-folio::after { content: ''; flex: 1; height: 1px; background: var(--df-rule); }
+
+.df-title {
+  font-family: var(--font-ui); font-weight: 400; letter-spacing: -.035em;
+  font-size: clamp(2.6rem, 7vw, 5rem); line-height: 1.22; margin: 26px 0 0;
+}
+.df-title em { font-style: normal; color: var(--df-clay); }
+.df-title small { display: block; font-size: .24em; letter-spacing: .02em; color: var(--df-ink-2); margin-block-start: .55em; line-height: 1.7; font-weight: 400; }
+
+.df-cover-quote {
+  margin: 22px 0 0; font-family: var(--font-ser); font-size: 1.16rem; line-height: 1.9; color: var(--df-ink-2);
+  padding-inline-start: 16px; border-inline-start: 2px solid var(--df-clay);
+  max-width: 46ch;
+}
+.df-cover-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 26px; }
+
+/* صفحة ملاحظات (بطاقة عيّنة) */
+.df-slip {
+  background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 2px;
+  padding: 20px 22px; box-shadow: var(--shadow); transform: rotate(-.6deg);
+  position: relative;
+}
+.df-slip::before {
+  content: ''; position: absolute; inset-inline: 22px; inset-block-start: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, var(--df-clay-soft) 0 8px, transparent 8px 14px);
+}
+.df-slip h3 { font-family: var(--font-ui); font-size: .92rem; font-weight: 500; margin: 6px 0 2px; }
+.df-slip p { margin: 0; font-size: .74rem; color: var(--df-ink-3); }
+.df-slip dl { margin: 14px 0 0; }
+.df-slip dl > div { display: flex; align-items: baseline; gap: 6px; padding-block: 4px; font-size: .86rem; border-block-end: 1px dotted var(--df-rule-2); }
+.df-slip dl > div.total, .df-slip .total { border-block-end: 0; }
+.df-slip dt { color: var(--df-ink-2); white-space: nowrap; }
+.df-slip dt::after { content: ''; display: none; }
+.df-slip dd { margin: 0; font-family: var(--font-ui); font-variant-numeric: tabular-nums; color: var(--df-ink); }
+.df-slip .total dt, .df-slip .total dd { font-weight: 500; color: var(--df-clay); }
+.df-slip .total { border-block-start: 1px solid var(--df-rule); margin-block-start: 4px; padding-block-start: 6px; }
+
+/* ---------------- أقسام ---------------- */
+.df-sec { padding-block: clamp(22px, 3.4vw, 40px); }
+.df-sec-head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 18px; align-items: baseline; margin-block-end: 16px; }
+.df-sec-no { font-family: var(--font-ui); font-size: 2.4rem; line-height: 1; color: var(--df-rule-2); letter-spacing: -.04em; }
+.df-sec-head h2 { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: clamp(1.3rem, 2.6vw, 1.8rem); letter-spacing: -.025em; }
+.df-sec-head p { margin: 4px 0 0; font-size: .84rem; color: var(--df-ink-3); }
+
+/* صفحة ملاحظات مزدوجة */
+.df-sheet { background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 2px; padding: 24px clamp(18px, 3vw, 34px); box-shadow: var(--shadow); }
+.df-sheet-line { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr); gap: 18px; padding-block: 10px; border-block-end: 1px dotted var(--df-rule-2); font-size: .9rem; }
+.df-sheet-line:last-child { border-block-end: 0; }
+.df-sheet-line dt { font-family: var(--font-ui); font-weight: 500; color: var(--df-ink); }
+.df-sheet-line dd { margin: 0; color: var(--df-ink-2); }
+
+.df-method { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.df-method article { background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 2px; padding: 16px; box-shadow: var(--shadow); }
+.df-method .n { font-family: var(--font-ui); font-size: 1.6rem; color: var(--df-clay); line-height: 1; }
+.df-method h3 { font-family: var(--font-ui); font-size: .96rem; font-weight: 500; margin: 8px 0 4px; }
+.df-method p { margin: 0; font-size: .82rem; color: var(--df-ink-2); }
+
+/* ---------------- المعالج ---------------- */
+.df-wizard { padding-block: 20px 64px; }
+.df-wizard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-block-end: 8px; }
+.df-wizard-head h1 { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -.03em; }
+.df-wizard-head .crumb { font-size: .7rem; letter-spacing: .14em; color: var(--df-ink-3); text-transform: uppercase; margin: 0 0 2px; }
+
+.df-strip { display: flex; align-items: center; gap: 0; border-block: 1px solid var(--df-rule); padding-block: 8px; margin-block-end: 4px; overflow-x: auto; scrollbar-width: none; }
+.df-strip::-webkit-scrollbar { display: none; }
+.df-strip .step-item {
+  appearance: none; border: 0; background: none; cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 12px; white-space: nowrap;
+  font-size: .74rem; color: var(--df-ink-3); border-radius: 0;
+}
+.df-strip .step-item .step-dot { all: unset; font-family: var(--font-ui); font-size: .7rem; color: var(--df-ink-3); }
+.df-strip .step-item.active { color: var(--df-ink); font-weight: 500; }
+.df-strip .step-item.active .step-dot { color: var(--df-clay); }
+.df-strip .step-item.done { color: var(--df-ink-2); }
+.df-strip .step-item.done .step-dot { color: var(--df-sage); }
+.df-strip > span { display: none; }
+.df-progress { height: 2px; background: var(--df-rule); margin-block-end: 16px; }
+#progressFill { background: var(--df-clay) !important; }
+
+.df-history { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 14px; }
+.df-history:empty { display: none; }
+.df-history .chip {
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 2px;
+  background: var(--df-clay-soft); border: 1px solid #e6c6b2; color: var(--df-ink); font-size: .72rem; padding: 2px 8px;
+  cursor: pointer;
+}
+.df-history .chip-key { color: var(--df-clay); }
+.df-history .chip-x { color: var(--df-ink-3); font-size: .6rem; }
+
+.df-body .card, .df-body .card-sm {
+  background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 3px; box-shadow: var(--shadow);
+}
+
+/* ---------------- الشجرة: أوراق الدفتر ---------------- */
+.df-body .tree-panel { direction: rtl !important; max-height: none; min-height: 0; background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; overflow: visible !important; }
+.df-body .tree-stage { background: none; border: 0; padding: 0; min-width: 0; max-width: 100%; }
+.df-body .tree-topline { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-block-end: 6px; }
+.df-body .tree-topline p { font-size: .8rem !important; color: var(--df-ink-3) !important; }
+.df-body .tree-count { background: none !important; border: 0 !important; border-radius: 0 !important; font-family: var(--font-ui); font-size: .7rem !important; color: var(--df-ink-3) !important; padding: 0 !important; }
+.df-body .tree-revisit { background: var(--df-clay-soft); color: #7f3d1e; border-radius: 3px; font-size: .74rem; padding: 7px 10px; margin-block-end: 8px; }
+.df-body .tree-stage > .tree-topline { display: none !important; }
+.df-body .tree-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-block-start: 12px; flex-wrap: wrap; border-block-start: 1px solid var(--df-rule); padding-block-start: 8px; }
+.df-body .tree-hint { font-size: .72rem; color: var(--df-ink-3); }
+.df-body .tree-backchip { background: none; border: 0; border-block-end: 1px solid var(--df-ink-2); border-radius: 0; padding: 1px 0; font-size: .74rem; color: var(--df-ink-2); cursor: pointer; }
+.df-body .tree-backchip:hover { color: var(--df-clay); border-block-end-color: var(--df-clay); }
+
+/* المسار كلصاقات فهرسة */
+.df-index { position: relative; padding-inline-start: 26px; }
+.df-index::before {
+  content: ''; position: absolute; inset-block: 8px 12px; inset-inline-start: 5px;
+  width: 1px; background: repeating-linear-gradient(to bottom, var(--df-rule-2) 0 4px, transparent 4px 9px);
+}
+.df-tabs-trail { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 14px; }
+.df-trail-tab {
+  appearance: none; cursor: pointer; font: inherit; font-size: .74rem; color: var(--df-ink-2);
+  background: var(--df-clay-soft); border: 1px solid #e7c8b5; border-radius: 2px 6px 2px 2px;
+  padding: 1px 9px 1px 9px; position: relative; border-inline-start: 3px solid var(--df-clay);
+}
+.df-trail-tab b { font-weight: 500; color: var(--df-ink); }
+.df-trail-tab i { font-style: normal; color: var(--df-clay); margin-inline-start: 5px; font-size: .64rem; }
+.df-trail-tab:hover { background: #eed3c1; }
+
+.df-sheet-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-block-end: 6px; }
+.df-sheet-head h3 { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: 1.22rem; letter-spacing: -.02em; }
+.df-sheet-head small { font-size: .72rem; color: var(--df-ink-3); }
+
+/* أوراق الخيارات */
+.df-leaves { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.df-sheet {
+  width: 100%; text-align: start; cursor: pointer; font-family: inherit;
+  display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: baseline;
+  background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 2px;
+  padding: 10px 12px 11px; box-shadow: 0 1px 0 rgba(120, 95, 55, .06);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 22px, rgba(198, 181, 150, .22) 22px 23px);
+  transition: transform .24s cubic-bezier(.2, .8, .2, 1), border-color .24s ease, box-shadow .24s ease;
+}
+.df-sheet:hover { border-color: var(--df-rule-2); transform: rotate(-.4deg) translateY(-1px); box-shadow: var(--shadow-hover); }
+.df-sheet-no { font-family: var(--font-ui); font-size: .72rem; color: var(--df-clay); }
+.df-sheet-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.df-sheet-body b { font-size: .9rem; font-weight: 500; color: var(--df-ink); }
+.df-sheet-body small { font-size: .74rem; color: var(--df-ink-3); }
+.df-sheet.df-picked { border-color: var(--df-clay); background: #fbf1e8; }
+.df-sheet.df-picked .df-sheet-no { color: var(--df-ink); }
+.df-sheet.df-fold { opacity: .32; transform: scale(.985) rotate(.5deg); }
+
+/* ---------------- عناصر app.js ---------------- */
+.df-body .card { padding: 18px; }
+.df-body .btn { border-radius: 999px; font-family: var(--font-ui); font-weight: 500; font-size: .82rem; padding: 8px 16px; min-height: 38px; }
+.df-body .btn-primary { background: var(--df-ink); color: var(--df-page); box-shadow: none; }
+.df-body .btn-primary:hover { background: var(--df-clay); transform: none; box-shadow: none; }
+.df-body .btn-secondary { background: transparent; border: 1px solid var(--df-rule-2); color: var(--df-ink); }
+.df-body .btn-secondary:hover { border-color: var(--df-clay); color: var(--df-clay); background: transparent; }
+.df-body .btn-quiet { color: var(--df-ink-2); }
+.df-body .btn-quiet:hover { background: var(--df-paper-2); color: var(--df-ink); }
+.df-body .input, .df-body .select { border: 1px solid var(--df-rule-2); border-radius: 3px; background: var(--df-page); color: var(--df-ink); font-family: inherit; font-size: .85rem; min-height: 40px; padding: 7px 10px; font-variant-numeric: tabular-nums; }
+.df-body .input:focus, .df-body .select:focus { outline: none; border-color: var(--df-sage); box-shadow: 0 0 0 3px rgba(124, 138, 99, .18); }
+.df-body .field-label { font-size: .72rem; color: var(--df-ink-3); font-weight: 400; }
+.df-body .badge { border-radius: 2px; font-size: .68rem; padding: 1px 7px; font-weight: 500; }
+.df-body .badge-neutral { background: var(--df-blue-soft); color: var(--df-blue); }
+.df-body .option-card { border-radius: 3px; border: 1px solid var(--df-rule); background: var(--df-page); box-shadow: none; }
+.df-body .option-card:hover { border-color: var(--df-sage); transform: none; box-shadow: var(--shadow-hover); }
+.df-body .option-card .opt-icon { border-radius: 50%; background: var(--df-blue-soft); }
+.df-body .item-row { border-radius: 3px; border: 1px solid var(--df-rule); background: var(--df-page); }
+.df-body .item-row:hover { border-color: var(--df-rule-2); }
+.df-body .pill-toggle { border-radius: 999px; background: var(--df-paper-2); border: 1px solid var(--df-rule); }
+.df-body .pill-toggle button { border-radius: 999px; font-size: .72rem; color: var(--df-ink-2); }
+.df-body .pill-toggle button.on { background: var(--df-page); color: var(--df-clay); box-shadow: 0 1px 2px rgba(80, 60, 30, .12); font-weight: 500; }
+.df-body .price-check-btn { border-radius: 999px; border-color: var(--df-rule-2); color: var(--df-ink-2); }
+.df-body .price-check-btn:hover:not(:disabled) { background: var(--df-clay); border-color: var(--df-clay); color: var(--df-page); }
+.df-body .pc-badge { border-radius: 2px; }
+.df-body .gateway-row { border-radius: 3px; border-color: var(--df-rule); background: var(--df-page); }
+.df-body .gateway-row.on { border-color: var(--df-sage); }
+.df-body .gw-toggle-icon { border-radius: 50%; background: var(--df-blue-soft); }
+.df-body .gateway-total, .df-body .net-split { border-radius: 3px; background: var(--df-paper-2); }
+.df-body .purchase-option { border-radius: 3px; background: var(--df-page); }
+.df-body .purchase-option.on { border-color: var(--df-clay); box-shadow: inset 0 0 0 1px var(--df-clay); }
+.df-body .preset-group-btn { border-radius: 999px; }
+.df-body .preset-group-btn.on { background: var(--df-ink); border-color: var(--df-ink); color: var(--df-page); }
+.df-body .table-clean th { font-family: var(--font-ui); font-size: .7rem; color: var(--df-ink-3); border-block-end: 1px solid var(--df-rule-2); font-weight: 500; }
+.df-body .table-clean td { border-block-end: 1px dotted var(--df-rule-2); font-size: .82rem; color: var(--df-ink-2); }
+.df-body .table-clean td.font-medium { color: var(--df-ink); }
+.df-body .ai-prose { font-size: .92rem; line-height: 2; color: var(--df-ink-2); }
+.df-body .ai-list li::before { background: var(--df-sage); }
+.df-body .section-kicker { font-size: .68rem; letter-spacing: .12em; color: var(--df-clay); text-transform: uppercase; }
+.df-body .progress-track { background: var(--df-rule); }
+.df-body .market-verdict { border-radius: 3px; }
+.df-body .market-verdict-empty { background: var(--df-paper-2); color: var(--df-ink-3); border: 1px dashed var(--df-rule-2); }
+.df-body .fade-up, .df-body .fade-in { animation: dfFold .36s cubic-bezier(.2, .8, .2, 1) both; }
+.df-body ::-webkit-scrollbar { width: 8px; height: 8px; }
+.df-body ::-webkit-scrollbar-thumb { background: var(--df-rule-2); }
+.df-body ::-webkit-scrollbar-track { background: transparent; }
+@keyframes dfFold { from { opacity: 0; transform: perspective(700px) rotateX(-2deg) translateY(6px) } to { opacity: 1; transform: none } }
+
+/* ---------------- النتائج: قراءة نثرية ---------------- */
+.df-body #resultsBody .status-hero {
+  background: var(--df-ink); color: #f6efdf; border: 0; border-radius: 4px; padding: 26px 28px;
+  box-shadow: 0 16px 36px rgba(51, 41, 31, .16);
+}
+.df-body .status-hero p, .df-body .status-hero span { color: #f6efdf; }
+.df-body .status-hero .faint { color: #c9bba2 !important; }
+.df-body .status-hero .text-\[--good\], .df-body .status-hero .text-\[--bad\] { color: #ffffff !important; }
+.df-body .status-hero .badge { background: rgba(246, 239, 223, .14); color: #f6efdf; border: 0; }
+.df-body .status-hero .kpi-value { font-family: var(--font-ui); }
+
+/* KPI → سطور دفتر بفواصل منقّطة */
+.df-body #resultsBody .status-hero + .grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 0 !important; margin-block-start: 18px; border-block-start: 1px solid var(--df-rule); }
+.df-body #resultsBody .status-hero + .grid > .card {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: baseline; gap: 0 10px;
+  background: transparent; border: 0; border-radius: 0;
+  border-block-end: 1px dotted var(--df-rule-2); padding: 8px 2px; box-shadow: none;
+}
+.df-body #resultsBody .status-hero + .grid > .card .kpi-label { order: 1; grid-column: 2; white-space: nowrap; font-size: .86rem; color: var(--df-ink-2); }
+.df-body #resultsBody .status-hero + .grid > .card > :not(.kpi-label):not(.kpi-value) { order: 3; grid-column: 2; grid-row: 2; margin: 0; font-size: .7rem !important; color: var(--df-ink-3); }
+.df-body #resultsBody .status-hero + .grid > .card .kpi-value { order: 2; grid-column: 1; grid-row: 1; text-align: start; font-family: var(--font-ui); font-size: 1.05rem; color: var(--df-ink); }
+.df-body .kpi-label { font-size: .72rem; color: var(--df-ink-3); }
+.df-body .kpi-value { font-family: var(--font-ui); font-size: 1.3rem; color: var(--df-ink); }
+.df-body .chart-box { height: 250px; }
+
+.df-foot {
+  max-width: 1180px; margin: 20px auto 0; padding: 22px clamp(16px, 4vw, 56px) 30px;
+  border-block-start: 1px solid var(--df-rule);
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+  font-size: .74rem; color: var(--df-ink-3);
+}
+.df-foot b { display: block; font-family: var(--font-ui); font-size: .95rem; font-weight: 500; color: var(--df-ink); }
+
+/* ---------------- الجوال ---------------- */
+@media (max-width: 1000px) {
+  .df-cover { grid-template-columns: 1fr; gap: 26px; align-items: start; }
+  .df-cover::before { display: none; }
+  .df-method { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .df-leaves { grid-template-columns: 1fr; }
+  .df-sec-head { grid-template-columns: 64px minmax(0, 1fr); }
+  .df-sheet-line { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (max-width: 640px) {
+  .df-tabs { display: none; }
+  .df-slip { transform: none; }
+  .df-title { font-size: clamp(2.2rem, 12vw, 3.2rem); }
+  .df-method { grid-template-columns: 1fr; }
+  .df-index { padding-inline-start: 16px; }
+  .df-body #resultsBody .status-hero + .grid > .card { flex-wrap: wrap; }
+  .df-body #resultsBody .status-hero + .grid > .card > :not(.kpi-label):not(.kpi-value) { flex-basis: 100%; }
+  .df-body .tree-stage > .tree-topline { display: flex !important; }
+  .df-body .tree-stage > .tree-topline p { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .df-body .fade-up, .df-body .fade-in { animation: none !important; }
+  .df-sheet:hover { transform: none; }
+}

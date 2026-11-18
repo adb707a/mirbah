@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <base href="./" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مِرْباح — دَفْتَر · التسعير كما يُكتب باليد</title>
+  <meta name="description" content="دَفْتَر: نسخة ورقية دافئة لمِرْباح. أوراق اختيار، نثر رقمي، وفواصل منقّطة." />
+  <meta name="api-base" content="" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Rubik:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['IBM Plex Sans Arabic', 'Segoe UI', 'system-ui', 'sans-serif'] },
+          colors: { ink: '#33291f', soft: '#5c5040', canvas: '#f3ecdd', clay: '#a8552f' }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/ingredients.css" />
+</head>
+<body class="df-body">
+
+  <svg class="df-leaf df-leaf-a" viewBox="0 0 200 200" aria-hidden="true">
+    <path d="M100 10c30 30 52 66 52 104 0 42-24 70-52 76-28-6-52-34-52-76 0-38 22-74 52-104z" />
+  </svg>
+  <svg class="df-leaf df-leaf-b" viewBox="0 0 200 200" aria-hidden="true">
+    <path d="M20 100c40-50 90-70 160-70-10 70-50 120-120 140 10-30 20-50 60-70-40 10-80 30-100 0z" />
+  </svg>
+
+  <header class="df-top">
+    <a href="#" class="df-mark" id="brandHome" aria-label="مِرْباح دَفْتَر"><b>مِرْباح</b><span>دَفْتَر</span></a>
+    <nav class="df-tabs" aria-label="التنقل">
+      <a href="#df-how">كيف يُكتب</a>
+      <a href="#df-rules">الحساب</a>
+      <a href="#df-limits">الحدود</a>
+      <button type="button" id="navResume">استئناف</button>
+      <button type="button" id="navReset">تصفير</button>
+    </nav>
+    <button class="df-btn" id="navStart" type="button" style="margin-inline-start:auto">افتح دفترًا جديدًا</button>
+  </header>
+
+  <main class="df-main">
+
+    <!-- ======================= الغلاف ======================= -->
+    <section id="landing" class="df-landing">
+      <div class="df-cover">
+        <div>
+          <p class="df-folio"><b>دفتر / ٠١</b> تسعير السوق السعودي</p>
+          <h1 class="df-title">
+            اكتب تكلفتك،<br />
+            ثم <em>بقّ سعرك.</em>
+            <small>أربع أوراق اختيار، وأربع صفحات حساب. لا شيء يُخفي نفسه، وكل رقم له سطر.</small>
+          </h1>
+
+          <blockquote class="df-cover-quote">
+            «السعر الجيد لا يُخمَّن في السوق، بل يُحسب في البيت ثم يُعرض عليه.»
+          </blockquote>
+
+          <div class="df-cover-actions">
+            <button class="df-btn" id="ctaStart" type="button">افتح الدفتر</button>
+            <button class="df-btn df-btn-quiet" id="ctaResume" type="button" style="display:none">أكمل من آخر سطر</button>
+          </div>
+        </div>
+
+        <aside class="df-slip" aria-label="صفحة عيّنة">
+          <h3>علبة واحدة — درج المكوّنات</h3>
+          <p>مثال على ورقة جاهزة</p>
+          <dl>
+            <div><dt>مكوّنات</dt><dd>6.40</dd></div>
+            <div><dt>تغليف</dt><dd>1.80</dd></div>
+            <div><dt>تشغيل</dt><dd>0.95</dd></div>
+            <div><dt>سعر البيع</dt><dd>18.00</dd></div>
+            <div class="total"><dt>ربح العلبة</dt><dd>8.85</dd></div>
+          </dl>
+        </aside>
+      </div>
+
+      <!-- الطريقة: أربع صفحات -->
+      <section class="df-sec" id="df-how">
+        <div class="df-sec-head">
+          <span class="df-sec-no">٠١</span>
+          <div>
+            <h2>أربع صفحات فقط</h2>
+            <p>كل صفحة تجيب سؤالًا واحدًا، ثم تُطوى.</p>
+          </div>
+        </div>
+        <div class="df-method">
+          <article>
+            <div class="n">١</div>
+            <h3>الأرض</h3>
+            <p>منشأة، نشاط، تصنيف، منتج — أوراق تُلصق في الفهرس.</p>
+          </article>
+          <article>
+            <div class="n">٢</div>
+            <h3>المواد</h3>
+            <p>سعر العبوة ومحتواها والكمية. يُوحَّد الوزن قبل الحساب.</p>
+          </article>
+          <article>
+            <div class="n">٣</div>
+            <h3>الخفي</h3>
+            <p>تغليف، كهرباء، توصيل، وقتك، ورسوم الدفع إن قبلتها.</p>
+          </article>
+          <article>
+            <div class="n">٤</div>
+            <h3>القراءة</h3>
+            <p>نثر واحد يجمع التكلفة والسعر والربح والهامش والتعادل.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- بنود الحساب -->
+      <section class="df-sec" id="df-rules">
+        <div class="df-sec-head">
+          <span class="df-sec-no">٠٢</span>
+          <div>
+            <h2>بنود الحساب، مكتوبة لا مضمرة</h2>
+            <p>ما يدخل الورقة وما لا يدخل، في صفحة واحدة.</p>
+          </div>
+        </div>
+        <dl class="df-sheet">
+          <div class="df-sheet-line"><dt>تكاليف المكوّنات</dt><dd>سعر العبوة ÷ محتواها × الكمية المستخدمة، بعد توحيد الوحدة.</dd></div>
+          <div class="df-sheet-line"><dt>التغليف والتشغيل</dt><dd>تُوزّع على عدد الوحدات المنتجة، لا على سعر المكوّن.</dd></div>
+          <div class="df-sheet-line"><dt>رسوم الدفع</dt><dd>نسبة + مبلغ ثابت، تُخصم من الربح ولا ترفع تكلفة الوحدة.</dd></div>
+          <div class="df-sheet-line"><dt>مقارنة السوق</dt><dd>تُحوَّل العبوة إلى وحدة واحدة قبل المقارنة، وإلا بطلت المقارنة.</dd></div>
+          <div class="df-sheet-line"><dt>نقطة التعادل</dt><dd>التكاليف الثابتة ÷ ربح الوحدة بعد الرسوم. أقل من وحدة = لا تعادل.</dd></div>
+          <div class="df-sheet-line"><dt>الفحص الذكي</dt><dd>يحتاج تشغيل الخادم. إن غاب، تظهر حالة صريحة لا رقم مخترع.</dd></div>
+        </dl>
+      </section>
+
+      <!-- الحدود -->
+      <section class="df-sec" id="df-limits">
+        <div class="df-sec-head">
+          <span class="df-sec-no">٠٣</span>
+          <div>
+            <h2>ما لا يُكتب في الدفتر</h2>
+            <p>لا سعر سوق مخترع، لا بيانات تغادر جهازك، لا رسوم لم تفعّلها.</p>
+          </div>
+        </div>
+        <dl class="df-sheet">
+          <div class="df-sheet-line"><dt>العملة</dt><dd>ريال سعودي.</dd></div>
+          <div class="df-sheet-line"><dt>التخزين</dt><dd>في متصفحك فقط، بلا حساب.</dd></div>
+          <div class="df-sheet-line"><dt>التحليل الذكي</dt><dd id="aiStatusBadge">جارٍ الفحص…</dd></div>
+        </dl>
+      </section>
+    </section>
+
+    <!-- ======================= المعالج ======================= -->
+    <section id="wizard" class="df-wizard hidden">
+      <header class="df-wizard-head">
+        <div>
+          <p class="crumb">ورقة العمل</p>
+          <h1 id="wizardTitle">لنبدأ</h1>
+        </div>
+        <button class="df-btn df-btn-quiet" id="wizardReset" type="button">↺ صفحة جديدة</button>
+      </header>
+
+      <div id="stepper" class="df-strip"></div>
+      <div class="df-progress"><div id="progressFill" class="h-full" style="width:0%"></div></div>
+
+      <div id="historyBar" class="df-history"></div>
+      <div id="wizardBody" class="df-wizard-body"></div>
+    </section>
+
+    <!-- ======================= النتائج ======================= -->
+    <section id="results" class="df-results hidden">
+      <div id="resultsBody"></div>
+    </section>
+  </main>
+
+  <footer class="df-foot">
+    <div><b>مِرْباح — دَفْتَر</b>ورقة تسعير للسوق السعودي. الأرقام تقديرية وتتغير بالمدينة والمتجر والوقت.</div>
+    <div>٢٠٢٦ · SAR</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/data.js"></script>
+
+  <script src="js/smart-units.js"></script>
+  <script src="js/ingredient-suggestions.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/price-agent.js"></script>
+  <script src="js/tree.js"></script>
+  <script src="js/catalog-sync.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    /* إعادة رسم الشجرة بعد وصول كتالوج الخادم (إن كان متاحًا) */
+    window.addEventListener('mirbah:catalog', function () {
+      try { if (window.__MIRBAH_CATALOG_LIVE__ && document.getElementById('wizard') && !document.getElementById('wizard').classList.contains('hidden')) { window.location.hash = ''; document.getElementById('navStart') && null; } } catch (e) {}
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مِرْباح — لوحة التاجر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Rubik:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/dashboard/app.css" />
+</head>
+<body class="dash">
+  <header class="top">
+    <a class="mark" href="/dashboard/"><b>مِرْباح</b><span>دفتر التاجر</span></a>
+    <nav class="nav" id="nav"></nav>
+    <div class="who">
+      <span id="whoText">…</span>
+      <button class="ghost" id="logout" type="button">خروج</button>
+    </div>
+  </header>
+
+  <main id="view" class="view" aria-live="polite">
+    <p class="loading">جارٍ التحميل…</p>
+  </main>
+
+  <div class="toast-host"></div>
+  <script src="/public/js/ui.js"></script>
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+/* =============================================================
+   دفتر V3 — قسم المكونات والتكاليف والتسعير (إعادة بناء)
+   هوية الدفتر: ورق كريمي، مسطّر خفيف، أرقام بالطين، فواصل منقّطة.
+   ============================================================= */
+
+/* ---------- شريط الإجماليات (ظاهر دائمًا) ---------- */
+.df-totals {
+  position: sticky; top: 8px; z-index: 6;
+  display: flex; flex-wrap: wrap; gap: 0; align-items: stretch;
+  background: var(--df-page); border: 1px solid var(--df-rule-2); border-radius: 3px;
+  box-shadow: 0 6px 18px rgba(80, 60, 30, .08);
+  margin-block: 14px 18px; overflow: hidden;
+}
+.df-body .df-totals { padding: 0 !important; }
+.df-body .df-total {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 9px 14px; border-inline-end: 1px dotted var(--df-rule-2); min-width: 0; flex: 1 1 0;
+}
+.df-body .df-total:last-child { border-inline-end: 0; }
+.df-body .df-total span { font-size: .66rem; letter-spacing: .02em; color: var(--df-ink-3); white-space: nowrap; }
+.df-body .df-total b { font-family: var(--font-ui); font-size: .98rem; font-weight: 500; color: var(--df-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.df-body .df-total-main { background: var(--df-ink); flex: 1.15 1 0; }
+.df-body .df-total-main span { color: #d9cbb2; }
+.df-body .df-total-main b { color: var(--df-page); font-size: 1.06rem; }
+
+/* ---------- عنوان القسم ---------- */
+.df-sec-title h3 { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: clamp(1.3rem, 2.6vw, 1.7rem); letter-spacing: -.025em; }
+.df-sec-title p { margin: 4px 0 0; font-size: .86rem; color: var(--df-ink-2); max-width: 62ch; }
+
+/* ---------- المراحل ---------- */
+.df-stage {
+  position: relative;
+  background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 3px;
+  padding: 14px 16px 16px; margin-block-start: 10px;
+  box-shadow: 0 1px 0 rgba(120, 95, 55, .05);
+}
+.df-stage-quiet { background: #fbf6ec; border-style: dashed; }
+.df-stage-head { display: flex; align-items: baseline; gap: 10px; margin-block-end: 8px; flex-wrap: wrap; }
+.df-stage-head .n {
+  font-family: var(--font-ui); font-size: .72rem; color: var(--df-page);
+  background: var(--df-clay); border-radius: 50%; width: 22px; height: 22px;
+  display: inline-grid; place-items: center; flex: none;
+}
+.df-stage-head h4 { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: 1rem; letter-spacing: -.01em; }
+.df-help { margin: 4px 0 0; font-size: .76rem; line-height: 1.75; color: var(--df-ink-3); }
+.df-help.is-warn { color: #8a4a20; }
+.df-warn {
+  margin: 8px 0 0; padding: 7px 10px; font-size: .78rem; line-height: 1.7;
+  background: var(--df-clay-soft); color: #7f3d1e; border-radius: 2px; border-inline-start: 3px solid var(--df-clay);
+}
+.df-empty { color: var(--df-ink-3); font-size: .86rem; padding: 14px 0; }
+
+/* ---------- الاقتراحات ---------- */
+.df-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 10px; }
+.df-chip {
+  appearance: none; cursor: pointer; font: inherit; font-size: .78rem; line-height: 1.4;
+  background: #fbf6ec; border: 1px solid var(--df-rule-2); border-radius: 999px;
+  color: var(--df-ink); padding: 4px 11px; transition: background .16s ease, border-color .16s ease;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.df-chip em { font-style: normal; font-size: .62rem; color: var(--df-ink-3); letter-spacing: .02em; }
+.df-chip.is-opt { border-style: dashed; }
+.df-chip.is-pack { border-color: #c7d0df; background: #f3f5f9; }
+.df-chip:hover:not(:disabled) { background: var(--df-clay-soft); border-color: #d9b39b; }
+.df-chip.is-added { opacity: .55; cursor: default; text-decoration: line-through; }
+.df-search { position: relative; margin-block-start: 12px; }
+.df-search .input { width: 100%; background: var(--df-page); }
+.df-search-results {
+  position: absolute; inset-inline: 0; top: calc(100% + 4px); z-index: 10;
+  background: var(--df-page); border: 1px solid var(--df-rule-2); border-radius: 3px;
+  box-shadow: 0 10px 26px rgba(60, 45, 20, .16); padding: 4px; display: grid; gap: 2px;
+}
+.df-search-item {
+  appearance: none; border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
+  text-align: start; padding: 6px 9px; border-radius: 2px; color: var(--df-ink);
+}
+.df-search-item:hover { background: var(--df-clay-soft); }
+
+/* ---------- بطاقة المكوّن ---------- */
+.df-ing-list { margin-block-start: 16px; display: grid; gap: 10px; }
+.df-ing {
+  background: var(--df-page); border: 1px solid var(--df-rule-2); border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(120, 95, 55, .06); overflow: hidden;
+}
+.df-ing.is-repeat { border-inline-start: 3px solid var(--df-sage); }
+.df-ing-head { display: flex; align-items: stretch; gap: 0; border-block-end: 1px solid var(--df-rule); background: #fbf6ec; }
+.df-body .df-ing-toggle {
+  appearance: none; border: 0; background: none; cursor: pointer; font: inherit; flex: 1; min-width: 0;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 18px; align-items: center; gap: 10px;
+  padding: 9px 12px; text-align: start; color: var(--df-ink);
+}
+.df-body .df-ing-no { font-family: var(--font-ui); font-size: .7rem; color: var(--df-clay); }
+.df-body .df-ing-title { font-family: var(--font-ui); font-weight: 500; font-size: .94rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-body .df-ing-cost { font-family: var(--font-ui); font-size: .9rem; color: var(--df-clay); font-variant-numeric: tabular-nums; }
+.df-body .df-ing-chev { font-size: .68rem; color: var(--df-ink-3); }
+.df-body .df-ing-del {
+  appearance: none; border: 0; border-inline-start: 1px solid var(--df-rule); background: none; cursor: pointer;
+  font: inherit; font-size: .74rem; color: #9c3a22; padding: 0 14px;
+}
+.df-body .df-ing-del:hover { background: var(--df-clay-soft); }
+.df-ing-body { padding: 4px 12px 12px; }
+.df-ing.is-collapsed .df-ing-body { display: none; }
+.df-ing-body .df-stage { box-shadow: none; }
+.df-ing-body .df-stage:first-child { margin-block-start: 10px; }
+
+/* حقول متجاوبة */
+.df-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
+
+/* ---------- الإيصال (المرحلة ٤) ---------- */
+.df-receipt {
+  margin-block-start: 10px; padding: 10px 12px; border: 1px dashed var(--df-rule-2); border-radius: 2px;
+  background: #fbf6ec; font-size: .82rem; line-height: 1.9; color: var(--df-ink-2);
+}
+.df-receipt p { margin: 0; }
+.df-receipt b { color: var(--df-ink); font-family: var(--font-ui); font-weight: 500; }
+.df-receipt-price { border-block-start: 1px dotted var(--df-rule-2); margin-block-start: 6px !important; padding-block-start: 6px; color: var(--df-ink-3); font-size: .76rem; }
+
+.df-summary { margin: 4px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 4px 18px; }
+.df-summary > div { display: flex; align-items: baseline; gap: 8px; border-block-end: 1px dotted var(--df-rule-2); padding-block: 3px; font-size: .82rem; }
+.df-summary dt { color: var(--df-ink-3); white-space: nowrap; }
+.df-summary dt::after { content: ''; }
+.df-summary dd { margin: 0; margin-inline-start: auto; font-family: var(--font-ui); font-weight: 500; color: var(--df-ink); }
+.df-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 12px; margin-block-start: 10px; align-items: end; }
+.df-options .price-check-wrap { min-width: 0; }
+.df-options .df-help { max-width: 34ch; }
+.df-options .pc-badge { max-width: 100%; }
+.df-summary-line { margin: 8px 0 0; font-size: .74rem; color: var(--df-ink-3); }
+
+/* ---------- نموذج الشراء ---------- */
+.df-layers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block-start: 14px; }
+.df-layer { background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 3px; padding: 10px 12px; }
+.df-layer .k { font-size: .66rem; letter-spacing: .06em; color: var(--df-clay); }
+.df-layer b { display: block; font-family: var(--font-ui); font-weight: 500; font-size: .92rem; margin-block: 1px 2px; }
+.df-layer p { margin: 0; font-size: .76rem; line-height: 1.7; color: var(--df-ink-3); }
+.df-layer p em { font-style: normal; color: var(--df-ink-2); }
+.df-layer-sum { background: var(--df-ink); border-color: var(--df-ink); }
+.df-layer-sum .k { color: #d9cbb2; }
+.df-layer-sum b { color: var(--df-page); font-size: 1.2rem; }
+.df-layer-sum p { color: #c9bba2; }
+.df-model-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-block-start: 12px; padding-block-start: 8px; border-block-start: 1px dotted var(--df-rule-2); font-size: .78rem; color: var(--df-ink-3); }
+.df-model-summary b { font-family: var(--font-ui); font-weight: 500; color: var(--df-ink); }
+
+/* ---------- التسعير ---------- */
+.df-price-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; margin-block-start: 10px; }
+.df-price-box { background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 3px; padding: 12px 14px; }
+.df-price-box .input { width: 100%; max-width: 180px; }
+.df-price-box-main { border-color: var(--df-rule-2); }
+.df-price-box-main .input { max-width: none; }
+.df-target-row { display: flex; gap: 4px; margin-block-start: 8px; flex-wrap: wrap; }
+.df-body .df-target {
+  appearance: none; cursor: pointer; font: inherit; font-size: .74rem; font-family: var(--font-ui);
+  border: 1px solid var(--df-rule-2); background: #fbf6ec; border-radius: 999px; padding: 2px 10px; color: var(--df-ink-2);
+}
+.df-body .df-target:hover { border-color: var(--df-clay); color: var(--df-clay); }
+.df-price-hint { margin: 8px 0 0; font-size: .78rem; color: var(--df-ink-3); }
+.df-body .df-use {
+  appearance: none; cursor: pointer; font: inherit; font-family: var(--font-ui); font-weight: 500;
+  background: none; border: 0; border-block-end: 1px solid var(--df-clay); color: var(--df-clay); padding: 0 2px;
+}
+.df-price-live { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-block-start: 10px; }
+.df-price-live > div { border-block-start: 1px dotted var(--df-rule-2); padding-block-start: 6px; }
+.df-price-live span { display: block; font-size: .66rem; color: var(--df-ink-3); }
+.df-price-live b { font-family: var(--font-ui); font-weight: 500; font-size: .9rem; color: var(--df-ink); }
+.df-price-live b.is-bad { color: var(--bad); }
+.df-price-live b.is-good { color: var(--good); }
+
+/* ---------- شارات فحص السعر ---------- */
+.df-body .pc-badge { border-radius: 2px; font-size: .7rem; padding: 1px 7px; display: inline-block; margin-block-start: 4px; }
+.df-body .pc-good { background: var(--good-bg); color: var(--good); }
+.df-body .pc-bad { background: var(--bad-bg); color: var(--bad); }
+.df-body .pc-neutral { background: #eee6d6; color: var(--df-ink-2); }
+.df-body .price-check-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+
+/* ---------- الجوال ---------- */
+@media (max-width: 860px) {
+  .df-layers { grid-template-columns: 1fr; }
+  .df-price-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .df-totals { position: static; }
+  .df-body .df-total { flex: 1 1 45%; }
+  .df-body .df-total-main { flex-basis: 100%; }
+  .df-ing-body { padding: 4px 10px 10px; }
+  .df-body .df-ing-toggle { grid-template-columns: 26px minmax(0, 1fr) auto 14px; gap: 7px; padding: 8px 10px; }
+  .df-price-live { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .df-stage { padding: 12px 12px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .df-chip { transition: none; }
+}

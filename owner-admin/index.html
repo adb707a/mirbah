@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مِرْباح — إدارة المنصة</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/owner-admin/app.css" />
+</head>
+<body class="own">
+  <aside class="side">
+    <div class="brand"><span class="mark">م</span><div><b>مِرْباح</b><span>OWNER CONSOLE</span></div></div>
+    <nav id="nav" aria-label="أقسام الإدارة"></nav>
+    <div class="side-foot">
+      <p id="whoName">…</p>
+      <button id="logout" type="button">خروج</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="mhead">
+      <div>
+        <p class="crumb" id="crumb">اللوحة</p>
+        <h1 id="title">لوحة المنصة</h1>
+      </div>
+      <div class="mhead-actions" id="headActions"></div>
+    </header>
+    <div id="view" class="view" aria-live="polite"><p class="loading">جارٍ التحميل…</p></div>
+  </main>
+
+  <div class="toast-host"></div>
+  <script src="/public/js/ui.js"></script>
+  <script src="/owner-admin/app.js"></script>
+</body>
+</html>

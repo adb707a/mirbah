@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مِرْباح — دخول إدارة المنصة</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#0f1115; --panel:#161a21; --line:#242833; --line2:#333a47; --ink:#e7eaf0; --ink2:#a7afbd; --ink3:#6f7887; --acc:#7c9cff; --bad:#ff8a8a; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans Arabic','Segoe UI',sans-serif; display:grid; place-items:center; padding:24px;
+    background-image:radial-gradient(600px 300px at 80% 0%, rgba(124,156,255,.08), transparent 70%); }
+  .card { width:min(430px,100%); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:28px; box-shadow:0 20px 50px rgba(0,0,0,.45); }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .mark { width:26px; height:26px; border-radius:6px; background:var(--acc); color:#0b0d11; display:grid; place-items:center; font-family:'IBM Plex Mono',monospace; font-size:.7rem; font-weight:600; }
+  .brand b { font-size:1rem; font-weight:500; }
+  .brand span { font-family:'IBM Plex Mono',monospace; font-size:.62rem; letter-spacing:.14em; color:var(--ink3); }
+  h1 { font-size:1.15rem; font-weight:500; margin:0 0 4px; }
+  p.sub { margin:0 0 20px; color:var(--ink3); font-size:.8rem; line-height:1.8; }
+  label { display:block; font-size:.72rem; color:var(--ink3); margin-bottom:4px; }
+  input { width:100%; padding:10px 12px; border:1px solid var(--line2); border-radius:7px; background:#0c0e12; font:inherit; font-size:.88rem; color:var(--ink); margin-bottom:12px; }
+  input:focus { outline:none; border-color:var(--acc); box-shadow:0 0 0 3px rgba(124,156,255,.16); }
+  button { width:100%; padding:11px; border:0; border-radius:8px; background:var(--acc); color:#0b0d11; font:inherit; font-weight:600; cursor:pointer; }
+  button:hover { filter:brightness(1.07); }
+  button:disabled { opacity:.6; cursor:wait; }
+  .err { background:rgba(255,90,90,.1); color:var(--bad); border:1px solid rgba(255,90,90,.25); font-size:.78rem; padding:8px 10px; border-radius:6px; margin-bottom:12px; display:none; }
+  .err.on { display:block; }
+  .note { margin-top:16px; font-size:.7rem; color:var(--ink3); line-height:1.8; border-top:1px solid var(--line); padding-top:12px; }
+</style>
+</head>
+<body>
+<form class="card" id="form" novalidate>
+  <div class="brand"><span class="mark">م</span><b>مِرْباح</b><span>OWNER ACCESS</span></div>
+  <h1>دخول إدارة المنصة</h1>
+  <p class="sub">مساحة المالك مستقلة تمامًا. كل طلب يتحقق من الصلاحية على الخادم.</p>
+  <div class="err" id="err" role="alert"></div>
+  <label for="email">بريد المالك</label>
+  <input id="email" type="email" autocomplete="username" dir="ltr" required />
+  <label for="password">كلمة المرور</label>
+  <input id="password" type="password" autocomplete="current-password" required />
+  <label for="code">رمز المصادقة الثنائية (إن مفعّل)</label>
+  <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="123456" />
+  <button id="submit" type="submit">دخول آمن</button>
+  <div class="note">لا يظهر رابط هذه الصفحة في أي تنقل عام. أي دخول ناجح أو فاشل يُسجَّل في سجل الأمان.</div>
+</form>
+<script src="/public/js/ui.js"></script>
+<script>
+  (function () {
+    const err = document.getElementById('err');
+    const btn = document.getElementById('submit');
+    document.getElementById('form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      err.classList.remove('on'); btn.disabled = true;
+      try {
+        const me = await MB.get('/api/auth/me');
+        if (me.user && me.user.role === 'owner') { location.href = '/owner-admin/'; return; }
+      } catch (x) {}
+      try {
+        const r = await MB.post('/api/auth/login', {
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+          code: document.getElementById('code').value
+        });
+        const me = await MB.get('/api/auth/me');
+        if (!me.user || me.user.role !== 'owner') {
+          await MB.post('/api/auth/logout', {});
+          err.textContent = 'هذا الحساب ليس حساب إدارة.'; err.classList.add('on'); btn.disabled = false; return;
+        }
+        location.href = r.redirect || '/owner-admin/';
+      } catch (ex) {
+        err.textContent = ex.message; err.classList.add('on'); btn.disabled = false;
+      }
+    });
+  })();
+</script>
+</body>
+</html>
