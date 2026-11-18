@@ -188,3 +188,62 @@
 @media (prefers-reduced-motion: reduce) {
   .df-chip { transition: none; }
 }
+
+/* ============ دفتر V3: لوحة الاقتراحات الذكية ============ */
+.df-smart { margin-block-start: 8px; }
+.df-smart-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.df-smart-head .hint { margin: 0; flex: 1 1 220px; }
+.df-smart-head input {
+  flex: 0 1 220px; padding: 6px 10px; border: 1px solid var(--df-rule-2); border-radius: 999px;
+  background: var(--df-page); font: inherit; font-size: .8rem; color: var(--df-ink);
+}
+.df-smart-head input:focus { outline: none; border-color: var(--df-sage); box-shadow: 0 0 0 3px rgba(124,138,99,.16); }
+.df-pick-groups { margin-block-start: 10px; display: grid; gap: 6px; }
+.df-pick-group { border: 1px solid var(--df-rule); border-radius: 3px; background: #fbf6ec; overflow: hidden; }
+.df-pick-head {
+  width: 100%; display: flex; align-items: baseline; gap: 8px; cursor: pointer;
+  background: none; border: 0; font: inherit; text-align: start; padding: 7px 12px; color: var(--df-ink);
+}
+.df-pick-head:hover { background: var(--df-paper-2); }
+.df-pick-head .n { font-family: var(--font-ui); font-size: .68rem; color: var(--df-clay); min-width: 22px; }
+.df-pick-head b { font-family: var(--font-ui); font-weight: 500; font-size: .86rem; }
+.df-pick-head small { color: var(--df-ink-3); font-size: .7rem; }
+.df-pick-head .chev { margin-inline-start: auto; font-size: .66rem; color: var(--df-ink-3); }
+.df-pick-group.closed .df-pick-body { display: none; }
+.df-pick-body { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 10px; }
+.df-pick {
+  appearance: none; cursor: pointer; font: inherit; font-size: .78rem; line-height: 1.4;
+  background: var(--df-page); border: 1px solid var(--df-rule-2); border-radius: 999px;
+  color: var(--df-ink); padding: 3px 10px 3px 8px; display: inline-flex; align-items: center; gap: 5px;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+.df-pick i { font-style: normal; font-family: var(--font-ui); font-size: .7rem; color: var(--df-ink-3); }
+.df-pick:hover { border-color: var(--df-clay); }
+.df-pick.on { background: var(--df-ink); border-color: var(--df-ink); color: var(--df-page); }
+.df-pick.on i { color: var(--df-page); }
+.df-pick.is-dup { opacity: .5; }
+.df-addbar {
+  position: sticky; bottom: 8px; margin-block-start: 10px; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  background: var(--df-page); border: 1px solid var(--df-ink); border-radius: 3px; padding: 8px 12px;
+  box-shadow: 0 8px 20px rgba(60,45,20,.14);
+}
+.df-addbar .count { font-family: var(--font-ui); font-size: .84rem; color: var(--df-ink); }
+.df-addbar .actions { display: flex; gap: 6px; }
+.df-smart-foot { display: flex; gap: 14px; flex-wrap: wrap; margin-block-start: 8px; }
+.df-body .df-smart-foot .link {
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-size: .73rem; color: var(--df-clay); border-block-end: 1px dotted var(--df-clay);
+}
+.df-body .df-smart-foot .link:hover { color: var(--df-ink); border-block-end-color: var(--df-ink); }
+.df-pick em.use, .df-pick em.ai { font-style: normal; font-family: var(--font-ui); font-size: .6rem; color: var(--df-clay); border: 1px solid var(--df-clay); border-radius: 999px; padding: 0 4px; }
+.df-pick em.ai { border-color: var(--df-sage); color: var(--df-sage); }
+
+/* نافذة ملء بيانات الشراء الجماعي */
+.df-pickbox { margin-block-start: 10px; border: 1px solid var(--df-ink); background: var(--df-page); border-radius: 3px; padding: 12px 14px; box-shadow: 0 10px 26px rgba(60,45,20,.14); }
+.df-pickbox-head { display: flex; flex-direction: column; gap: 2px; margin-block-end: 8px; }
+.df-pickbox-head b { font-family: var(--font-ui); font-weight: 500; font-size: .9rem; }
+.df-pickbox-head .hint { margin: 0; }
+.df-pickbox-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.df-pickbox-actions { display: flex; gap: 8px; margin-block-start: 10px; flex-wrap: wrap; }
+.df-pickbox label.ld { display: block; font-size: .72rem; color: var(--df-ink-3); margin-bottom: 3px; }

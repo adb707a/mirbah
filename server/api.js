@@ -87,8 +87,19 @@ function createApi(dbOrRef, opts) {
     });
   }
   function suggestionsFor(ingKey) {
-    const rows = db.prepare('SELECT name, kind, unit FROM catalog_suggestions WHERE ing_key = ? ORDER BY position').all(ingKey);
-    return rows.map((r) => ({ name: r.name, kind: r.kind, unit: r.unit }));
+    // كل اسم مرة واحدة فقط لكل منتج — تنقية تلقائية حتى لو نُضيف اقتراح مكرر من الإدارة
+    const rows = db.prepare("SELECT name, kind, COALESCE(unit,'') AS unit, MIN(position) AS pos FROM catalog_suggestions WHERE ing_key = ? GROUP BY name").all(ingKey);
+    const rank = { core: 1, extra: 2, optional: 3, packaging: 4 };
+    return rows
+      .sort((a, b) => (rank[a.kind] || 9) - (rank[b.kind] || 9) || a.pos - b.pos)
+      .map((r) => ({ name: r.name, kind: r.kind, unit: r.unit || null }));
+  }
+
+  /* ---------- مكتبة المكونات العامة (مرجع للبحث والإضافات) ---------- */
+  function librarySearch(q, limit) {
+    const term = '%' + String(q || '').trim() + '%';
+    return db.prepare(`SELECT key,name,en_name,cls,category,default_unit FROM library_items
+      WHERE active = 1 AND (name LIKE ? OR en_name LIKE ?) ORDER BY name LIMIT ?`).all(term, term, Number(limit) || 20);
   }
 
   /* ---------- المشاريع ---------- */
@@ -122,7 +133,30 @@ function createApi(dbOrRef, opts) {
     /* ================= عام ================= */
     'GET /api/public/catalog': () => ({ ok: true, activities: catalogTree() }),
     'GET /api/public/suggestions': (req, params) => ({ ok: true, items: suggestionsFor(params.key || '') }),
-    'GET /api/public/peek': () => {
+    'GET /api/public/library': (req, params) => {
+      const q = S(params.q);
+      if (q.length < 2) return { ok: true, items: [] };
+      return { ok: true, items: librarySearch(q, params.limit) };
+    },
+    /* «اقترح لي بذكاء»: خدمة الذكاء لا تُستخدم إلا بطلب صريح، والنتيجة مسودة لا تدخل المكتبة */
+    'POST /api/merchant/ai-suggest': async (req) => {
+      const u = currentUser(req);
+      if (!u) return { error: { status: 401, code: 'auth_required', message: 'سجّل الدخول أولًا.' } };
+      const st = db.prepare("SELECT enabled FROM ai_settings WHERE kind = 'suggest'").get();
+      if (st && !st.enabled) return { ok: false, code: 'disabled', message: 'ميزة الاقتراح الذكي معطّلة من إدارة المنصة.' };
+      const b = await readBody(req);
+      const ai = require('./ai-suggest.js');
+      const started = Date.now();
+      const r = await ai.suggest({
+        productName: S(b.productName), activityName: S(b.activityName),
+        existing: (Array.isArray(b.existing) ? b.existing : []).map(S).slice(0, 40)
+      });
+      try {
+        db.prepare('INSERT INTO ai_logs(at,merchant_id,kind,model,ok,latency_ms,error) VALUES(?,?,?,?,?,?,?)')
+          .run(new Date().toISOString(), u.id, 'suggest', ai.model(), r.ok ? 1 : 0, Date.now() - started, r.ok ? null : (r.code || 'error'));
+      } catch (e) {}
+      return r;
+    },    'GET /api/public/peek': () => {
       const c = db.prepare('SELECT COUNT(*) n FROM catalog_activities').get().n;
       const k = db.prepare('SELECT COUNT(*) n FROM catalog_products').get().n;
       return { ok: true, activities: c, products: k };
@@ -374,6 +408,118 @@ function createApi(dbOrRef, opts) {
       return { ok: true, id };
     },
 
+    /* ================= اقتراحات التاجر (مراجعة إدارية أولًا) ================= */
+    'POST /api/merchant/suggestions': async (req) => {
+      const u = currentUser(req);
+      const b = await readBody(req);
+      const name = S(b.name).trim();
+      if (name.length < 2) return { error: { status: 400, code: 'bad_name', message: 'اكتب اسم المكوّن.' } };
+      const since = new Date(Date.now() - 864e5).toISOString();
+      if (u && u.role === 'merchant') {
+        const recent = db.prepare('SELECT COUNT(*) n FROM merchant_suggestions WHERE created_at > ? AND user_id = ?').get(since, u.id).n;
+        if (recent >= 20) return { error: { status: 429, code: 'limit', message: 'تجاوزت حد الاقتراحات اليومي (٢٠).' } };
+        if (db.prepare('SELECT id FROM merchant_suggestions WHERE user_id = ? AND name = ? AND status = ?').get(u.id, name, 'pending')) {
+          return { error: { status: 409, code: 'duplicate', message: 'لديك اقتراح بنفس الاسم قيد المراجعة.' } };
+        }
+        db.prepare('INSERT INTO merchant_suggestions(user_id,name,unit,note,status,created_at) VALUES(?,?,?,?,?,?)')
+          .run(u.id, name, S(b.unit) || 'g', S(b.note), 'pending', new Date().toISOString());
+        A.audit(db, u, 'merchant.suggestion.create', 'merchant_suggestion', name, null, ipOf(req));
+        return { ok: true, message: 'أُرسل للمراجعة.' };
+      }
+      return { ok: false, pending: 'سجّل الدخول ليُرسل اقتراحك للمراجعة الإدارية.' };
+    },
+    'GET /api/merchant/suggestions': (req) => {
+      const u = currentUser(req);
+      if (!u || u.role !== 'merchant') return { ok: true, rules: 'سجّل الدخول لعرض اقتراحاتك' };
+      const rows = db.prepare('SELECT id,name,unit,status,reviewed_at,created_at FROM merchant_suggestions WHERE user_id = ? ORDER BY id DESC LIMIT 50').all(u.id);
+      return { ok: true, rows };
+    },
+    'POST /api/merchant/report': async (req) => {
+      const u = currentUser(req);
+      const b = await readBody(req);
+      const name = S(b.name).trim();
+      if (!name) return { error: { status: 400, code: 'bad_request', message: 'حدّد الاقتراح.' } };
+      const since = new Date(Date.now() - 864e5).toISOString();
+      let recent = 0;
+      try { recent = db.prepare('SELECT COUNT(*) n FROM suggestion_reports WHERE created_at > ? AND user_id = ?').get(since, u ? u.id : '').n; } catch (e) { recent = 0; }
+      if (recent >= 10) return { error: { status: 429, code: 'limit', message: 'تجاوزت حد البلاغات اليومي.' } };
+      db.prepare('INSERT INTO suggestion_reports(user_id,ing_key,name,reason,created_at) VALUES(?,?,?,?,?)')
+        .run(u ? u.id : null, S(b.ingKey), name, S(b.reason).slice(0, 400), new Date().toISOString());
+      A.audit(db, u || { id: null, role: 'visitor' }, 'merchant.report', 'suggestion_report', name, null, ipOf(req));
+      return { ok: true };
+    },
+    /* ================= مكتبة التاجر الشخصية (مواده وأسعاره) ================= */
+    'GET /api/merchant/usage': (req) => {
+      const u = currentUser(req);
+      if (!u || u.role !== 'merchant') return { ok: true, items: [] };
+      const prods = db.prepare('SELECT pr.state_json FROM products pr JOIN projects pj ON pj.id = pr.project_id WHERE pj.owner_id = ?').all(u.id);
+      const counts = new Map();
+      prods.forEach((p) => {
+        try {
+          const st = JSON.parse(p.state_json || '{}');
+          (Array.isArray(st.ingredients) ? st.ingredients : []).forEach((x) => {
+            const n = String((x && x.name) || '').trim();
+            if (n) counts.set(n, (counts.get(n) || 0) + 1);
+          });
+        } catch (e) {}
+      });
+      const items = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 40).map((e) => ({ name: e[0], count: e[1] }));
+      return { ok: true, items };
+    },
+    'GET /api/merchant/items': (req, params) => {
+      const r = requireRole(req, 'merchant'); if (r.error) return r;
+      const q = S(params.q).trim();
+      const rows = db.prepare('SELECT * FROM merchant_items WHERE user_id = ? ORDER BY name').all(r.user.id);
+      const filtered = q ? rows.filter((x) => x.name.indexOf(q) > -1) : rows;
+      return { ok: true, items: filtered.map((x) => ({ ...x, prices: db.prepare('SELECT at,price,pack,unit,supplier FROM merchant_item_prices WHERE item_id = ? ORDER BY id DESC LIMIT 5').all(x.id) })) };
+    },    'POST /api/merchant/items': async (req) => {
+      const r = requireRole(req, 'merchant'); if (r.error) return r;
+      const b = await readBody(req);
+      const name = S(b.name).trim();
+      if (!name) return { error: { status: 400, code: 'bad_name', message: 'الاسم مطلوب.' } };
+      const id = require('crypto').randomUUID();
+      const t = new Date().toISOString();
+      db.prepare('INSERT INTO merchant_items(id,user_id,library_key,name,unit,category,last_price,last_pack,supplier,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+        .run(id, r.user.id, S(b.libraryKey) || null, name, S(b.unit) || 'g', S(b.category) || null,
+          Number(b.lastPrice) || null, Number(b.lastPack) || null, S(b.supplier) || null, t, t);
+      if (Number(b.lastPrice) > 0) {
+        db.prepare('INSERT INTO merchant_item_prices(item_id,at,price,pack,unit,supplier,note) VALUES(?,?,?,?,?,?,?)')
+          .run(id, t, Number(b.lastPrice), Number(b.lastPack) || null, S(b.unit) || 'g', S(b.supplier) || null, 'أول شراء');
+      }
+      A.audit(db, r.user, 'merchant.item.create', 'merchant_item', id, { name }, ipOf(req));
+      return { ok: true, item: { id, name } };
+    },
+    'PATCH /api/merchant/items/:id': async (req, params) => {
+      const r = requireRole(req, 'merchant'); if (r.error) return r;
+      const cur = db.prepare('SELECT * FROM merchant_items WHERE id = ? AND user_id = ?').get(params.id, r.user.id);
+      if (!cur) return { error: { status: 404, code: 'not_found', message: 'المادة غير موجودة.' } };
+      const b = await readBody(req);
+      const t = new Date().toISOString();
+      db.prepare('UPDATE merchant_items SET name=?, unit=?, category=?, supplier=?, last_price=?, last_pack=?, updated_at=? WHERE id=?')
+        .run(S(b.name != null ? b.name : cur.name), S(b.unit != null ? b.unit : cur.unit), S(b.category != null ? b.category : cur.category),
+          S(b.supplier != null ? b.supplier : cur.supplier), Number(b.lastPrice) || cur.last_price, Number(b.lastPack) || cur.last_pack, t, cur.id);
+      if (Number(b.newPrice) > 0) {
+        db.prepare('INSERT INTO merchant_item_prices(item_id,at,price,pack,unit,supplier,note) VALUES(?,?,?,?,?,?,?)')
+          .run(cur.id, t, Number(b.newPrice), Number(b.newPack) || cur.last_pack, S(b.unit) || cur.unit, S(b.supplier) || cur.supplier, S(b.note) || 'شراء جديد');
+      }
+      A.audit(db, r.user, 'merchant.item.update', 'merchant_item', cur.id, { newPrice: b.newPrice || null }, ipOf(req));
+      return { ok: true };
+    },
+    'GET /api/merchant/items/:id/history': (req, params) => {
+      const r = requireRole(req, 'merchant'); if (r.error) return r;
+      const cur = db.prepare('SELECT id,name FROM merchant_items WHERE id = ? AND user_id = ?').get(params.id, r.user.id);
+      if (!cur) return { error: { status: 404, code: 'not_found', message: 'المادة غير موجودة.' } };
+      return { ok: true, name: cur.name, rows: db.prepare('SELECT * FROM merchant_item_prices WHERE item_id = ? ORDER BY id DESC LIMIT 50').all(cur.id) };
+    },
+    'DELETE /api/merchant/items/:id': (req, params) => {
+      const r = requireRole(req, 'merchant'); if (r.error) return r;
+      const cur = db.prepare('SELECT id FROM merchant_items WHERE id = ? AND user_id = ?').get(params.id, r.user.id);
+      if (!cur) return { error: { status: 404, code: 'not_found', message: 'المادة غير موجودة.' } };
+      db.prepare('DELETE FROM merchant_items WHERE id = ?').run(cur.id);
+      A.audit(db, r.user, 'merchant.item.delete', 'merchant_item', cur.id, null, ipOf(req));
+      return { ok: true };
+    },
+
     /* ================= المالك ================= */
     'GET /api/owner/stats': (req) => {
       const r = requireRole(req, 'owner'); if (r.error) return r;
@@ -468,29 +614,149 @@ function createApi(dbOrRef, opts) {
       const b = await readBody(req);
       const key = S(b.ingKey); const name = S(b.name).trim();
       if (!key || !name) return { error: { status: 400, code: 'bad_request', message: 'المفتاح والاسم مطلوبان.' } };
+      // التقاط التكرار: نفس الاسم لنفس المفتاح
+      const dup = db.prepare('SELECT id FROM catalog_suggestions WHERE ing_key = ? AND name = ?').get(key, name);
+      if (dup) return { error: { status: 409, code: 'duplicate', message: 'هذا الاقتراح موجود لهذا المنتج.' } };
       const pos = db.prepare('SELECT COALESCE(MAX(position),0)+1 n FROM catalog_suggestions WHERE ing_key = ?').get(key).n;
       db.prepare('INSERT INTO catalog_suggestions(ing_key,name,kind,unit,position) VALUES(?,?,?,?,?)')
-        .run(key, name, ['core', 'optional', 'packaging'].includes(b.kind) ? b.kind : 'core', S(b.unit) || null, pos);
+        .run(key, name, ['core', 'extra', 'optional', 'packaging'].includes(b.kind) ? b.kind : 'core', S(b.unit) || null, pos);
       A.audit(db, r.user, 'owner.suggestion.create', 'suggestion', key, { name }, ipOf(req));
+      return { ok: true };
+    },
+    'PATCH /api/owner/catalog/suggestions/:id': async (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req);
+      const cur = db.prepare('SELECT * FROM catalog_suggestions WHERE id = ?').get(Number(params.id));
+      if (!cur) return { error: { status: 404, code: 'not_found', message: 'الاقتراح غير موجود.' } };
+      db.prepare('UPDATE catalog_suggestions SET name = ?, kind = ?, unit = ?, position = ? WHERE id = ?')
+        .run(S(b.name != null ? b.name : cur.name).trim() || cur.name,
+          ['core', 'extra', 'optional', 'packaging'].includes(b.kind) ? b.kind : cur.kind,
+          S(b.unit != null ? b.unit : cur.unit) || null,
+          b.position != null ? Number(b.position) || 0 : cur.position, cur.id);
+      A.audit(db, r.user, 'owner.suggestion.update', 'suggestion', cur.id, b, ipOf(req));
+      return { ok: true };
+    },
+    /* ---------- مكتبة المكونات العامة (CRUD + بحث + تصدير/استيراد) ---------- */
+    'GET /api/owner/library': (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const q = '%' + S(params.q).trim() + '%';
+      const rows = db.prepare(`SELECT * FROM library_items WHERE (? = '%%' OR name LIKE ? OR en_name LIKE ?) ORDER BY category, name LIMIT 400`).all(q, q, q);
+      return { ok: true, items: rows };
+    },
+    'POST /api/owner/library': async (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req);
+      const name = S(b.name).trim(); if (!name) return { error: { status: 400, code: 'bad_request', message: 'الاسم مطلوب.' } };
+      const key = S(b.key).trim().toLowerCase() || name.replace(/\s+/g, '_');
+      if (db.prepare('SELECT key FROM library_items WHERE key = ? OR name = ?').get(key, name)) {
+        return { error: { status: 409, code: 'duplicate', message: 'هذا المكوّن موجود بالفعل.' } };
+      }
+      db.prepare('INSERT INTO library_items(key,name,en_name,cls,category,default_unit,notes,active,created_at) VALUES(?,?,?,?,?,?,?,?,?)')
+        .run(key, name, S(b.enName) || null, ['ingredient', 'extra', 'packaging', 'tool'].includes(b.cls) ? b.cls : 'ingredient',
+          S(b.category) || 'مواد خام', S(b.defaultUnit) || 'g', S(b.notes) || null, 1, new Date().toISOString());
+      A.audit(db, r.user, 'owner.library.create', 'library', key, { name }, ipOf(req));
+      return { ok: true, key };
+    },
+    'PATCH /api/owner/library/:key': async (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req);
+      const cur = db.prepare('SELECT * FROM library_items WHERE key = ?').get(params.key);
+      if (!cur) return { error: { status: 404, code: 'not_found', message: 'المكوّن غير موجود.' } };
+      db.prepare('UPDATE library_items SET name=?, en_name=?, cls=?, category=?, default_unit=?, notes=?, active=? WHERE key=?')
+        .run(S(b.name != null ? b.name : cur.name).trim() || cur.name, S(b.enName != null ? b.enName : cur.en_name) || null,
+          ['ingredient', 'extra', 'packaging', 'tool'].includes(b.cls) ? b.cls : cur.cls,
+          S(b.category != null ? b.category : cur.category) || cur.category,
+          S(b.defaultUnit != null ? b.defaultUnit : cur.default_unit) || cur.default_unit,
+          S(b.notes != null ? b.notes : cur.notes) || null,
+          b.active != null ? (b.active ? 1 : 0) : cur.active, cur.key);
+      A.audit(db, r.user, 'owner.library.update', 'library', cur.key, b, ipOf(req));
+      return { ok: true };
+    },
+    'DELETE /api/owner/library/:key': (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      // لا حذف فعلي: تعطيل حتى تبقى الاقتراحات المرتبطة سليمة
+      db.prepare('UPDATE library_items SET active = 0 WHERE key = ?').run(params.key);
+      A.audit(db, r.user, 'owner.library.disable', 'library', params.key, null, ipOf(req));
+      return { ok: true, note: 'عُطّل المكوّن (لم يُحذف حفاظًا على الاقتراحات)' };
+    },
+    /* دمج مكوّنين مكررين: تُنقل الاقتراحات من القديم إلى الجديد ثم يُعطَّل القديم */
+    'POST /api/owner/library/merge': async (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req);
+      const from = S(b.from); const to = S(b.to);
+      if (!from || !to || from === to) return { error: { status: 400, code: 'bad_request', message: 'حدّد مكوّنين مختلفين.' } };
+      const src = db.prepare('SELECT * FROM library_items WHERE key = ?').get(from);
+      const dst = db.prepare('SELECT * FROM library_items WHERE key = ?').get(to);
+      if (!src || !dst) return { error: { status: 404, code: 'not_found', message: 'أحد المكوّنين غير موجود.' } };
+      const res = db.prepare('UPDATE catalog_suggestions SET name = ? WHERE name = ?').run(dst.name, src.name);
+      db.prepare('UPDATE library_items SET active = 0 WHERE key = ?').run(src.key);
+      A.audit(db, r.user, 'owner.library.merge', 'library', src.key, { into: dst.name, suggestions: res.changes }, ipOf(req));
+      return { ok: true, moved: res.changes };
+    },
+    'GET /api/owner/library/export': (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const items = db.prepare('SELECT key,name,en_name,cls,category,default_unit FROM library_items ORDER BY category, name').all();
+      const suggestions = db.prepare('SELECT ing_key,name,kind,unit,position FROM catalog_suggestions ORDER BY ing_key, position').all();
+      return { ok: true, exportedAt: new Date().toISOString(), items, suggestions };
+    },
+    'POST /api/owner/library/import': async (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req, 2000000);
+      const items = Array.isArray(b.items) ? b.items : [];
+      const suggestions = Array.isArray(b.suggestions) ? b.suggestions : [];
+      if (!items.length && !suggestions.length) return { error: { status: 400, code: 'bad_request', message: 'الملف لا يحتوي بيانات.' } };
+      const bk = opts.makeBackup();
+      const t = new Date().toISOString();
+      const insItem = db.prepare('INSERT OR IGNORE INTO library_items(key,name,en_name,cls,category,default_unit,active,created_at) VALUES(?,?,?,?,?,?,1,?)');
+      const insSug = db.prepare('INSERT INTO catalog_suggestions(ing_key,name,kind,unit,position) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM catalog_suggestions WHERE ing_key = ? AND name = ?)');
+      let nI = 0; let nS = 0;
+      items.forEach((x) => { if (x && x.name) { insItem.run(S(x.key || x.name.toLowerCase().replace(/\s+/g, '_')), S(x.name), S(x.en_name) || null, S(x.cls) || 'ingredient', S(x.category) || 'مواد خام', S(x.default_unit) || 'g', t); nI++; } });
+      suggestions.forEach((x) => { if (x && x.name && x.ing_key) { insSug.run(S(x.ing_key), S(x.name), S(x.kind) || 'core', S(x.unit) || null, Number(x.position) || 0, S(x.ing_key), S(x.name)); nS++; } });
+      db.prepare('INSERT INTO catalog_imports(at,by_user,kind,summary,backup_name) VALUES(?,?,?,?,?)')
+        .run(new Date().toISOString(), r.user.id, 'import', nI + ' مكوّن، ' + nS + ' اقتراح', bk ? bk.name : null);
+      A.audit(db, r.user, 'owner.library.import', 'library', 'import', { items: nI, suggestions: nS }, ipOf(req));
+      return { ok: true, items: nI, suggestions: nS, backup: bk };
+    },
+    'GET /api/owner/imports': (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      return { ok: true, rows: db.prepare('SELECT * FROM catalog_imports ORDER BY id DESC LIMIT 20').all() };
+    },
+    /* ---------- مراجعة اقتراحات التجار والبلاغات ---------- */
+    'GET /api/owner/suggestions-review': (req) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      return {
+        ok: true,
+        pending: db.prepare(`SELECT m.*, u.email FROM merchant_suggestions m LEFT JOIN users u ON u.id = m.user_id
+          WHERE m.status = 'pending' ORDER BY m.id DESC LIMIT 100`).all(),
+        reports: db.prepare('SELECT * FROM suggestion_reports WHERE resolved = 0 ORDER BY id DESC LIMIT 100').all()
+      };
+    },
+    'PATCH /api/owner/suggestions-review/:id': async (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      const b = await readBody(req);
+      const row = db.prepare('SELECT * FROM merchant_suggestions WHERE id = ?').get(Number(params.id));
+      if (!row) return { error: { status: 404, code: 'not_found', message: 'الاقتراح غير موجود.' } };
+      const decision = b.status === 'approved' ? 'approved' : 'rejected';
+      db.prepare('UPDATE merchant_suggestions SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?')
+        .run(decision, r.user.id, new Date().toISOString(), row.id);
+      if (decision === 'approved' && b.ingKey) {
+        const pos = db.prepare('SELECT COALESCE(MAX(position),0)+1 n FROM catalog_suggestions WHERE ing_key = ?').get(b.ingKey).n;
+        db.prepare('INSERT INTO catalog_suggestions(ing_key,name,kind,unit,position) VALUES(?,?,?,?,?)')
+          .run(S(b.ingKey), row.name, 'optional', row.unit || null, pos);
+      }
+      A.audit(db, r.user, 'owner.suggestion.review', 'merchant_suggestion', row.id, { decision, ingKey: b.ingKey || null }, ipOf(req));
+      return { ok: true };
+    },
+    'PATCH /api/owner/reports/:id': (req, params) => {
+      const r = requireRole(req, 'owner'); if (r.error) return r;
+      db.prepare('UPDATE suggestion_reports SET resolved = 1 WHERE id = ?').run(Number(params.id));
+      A.audit(db, r.user, 'owner.report.resolve', 'suggestion_report', params.id, null, ipOf(req));
       return { ok: true };
     },
     'DELETE /api/owner/catalog/suggestions/:id': (req, params) => {
       const r = requireRole(req, 'owner'); if (r.error) return r;
       db.prepare('DELETE FROM catalog_suggestions WHERE id = ?').run(Number(params.id));
       A.audit(db, r.user, 'owner.suggestion.delete', 'suggestion', params.id, null, ipOf(req));
-      return { ok: true };
-    },
-    'GET /api/owner/library': (req) => {
-      const r = requireRole(req, 'owner'); if (r.error) return r;
-      return { ok: true, items: db.prepare('SELECT * FROM ingredient_library ORDER BY name LIMIT 500').all() };
-    },
-    'POST /api/owner/library': async (req) => {
-      const r = requireRole(req, 'owner'); if (r.error) return r;
-      const b = await readBody(req);
-      const name = S(b.name).trim(); if (!name) return { error: { status: 400, code: 'bad_request', message: 'الاسم مطلوب.' } };
-      db.prepare('INSERT INTO ingredient_library(name,category,default_unit,notes,updated_by,updated_at) VALUES(?,?,?,?,?,?)')
-        .run(name, S(b.category) || null, S(b.defaultUnit) || 'g', S(b.notes), r.user.id, new Date().toISOString());
-      A.audit(db, r.user, 'owner.library.create', 'ingredient', name, null, ipOf(req));
       return { ok: true };
     },
     'GET /api/owner/ai': (req) => {
@@ -616,6 +882,11 @@ function createApi(dbOrRef, opts) {
       if (result && result.error) {
         const e = result.error;
         return json(res, e.status || 400, { ok: false, code: e.code, message: e.message });
+      }
+      // مسارات قد تُرجع ok:false بنيّة صريحة (مثال: الذكاء غير مهيأ)
+      if (result && result.ok === false) {
+        const headers0 = {};
+        return json(res, 200, result, headers0);
       }
       const headers = {};
       if (result && result.setCookie) { headers['Set-Cookie'] = result.setCookie; delete result.setCookie; }

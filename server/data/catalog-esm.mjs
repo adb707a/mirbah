@@ -120,8 +120,15 @@ export const DOMAINS = [
     S('gifts', 'هدايا المناسبات', [P('occasion_gift', 'هدية مناسبة', { ingKey: 'gift' })])
   ]),
   D('candles', 'الشموع والصناعة اليدوية', '🕯️', [
-    S('candles_sub', 'الشموع', [P('soy_candle', 'شمعة صويا', { ingKey: 'candles' }), P('scented_candle', 'شمعة معطرة', { ingKey: 'candles' })]),
+    S('candles_sub', 'الشموع', [
+      P('soy_candle', 'شمعة صويا', { ingKey: 'candles' }),
+      P('scented_candle', 'شمعة معطرة', { ingKey: 'candles' })
+    ]),
     S('soap', 'الصابون', [P('soap_bar', 'صابون طبيعي', { ingKey: 'soap' })])
+  ]),
+  D('digital', 'التصميم والخدمات الرقمية', '🎨', [
+    S('logos', 'تصميم الشعارات', [P('logo_design', 'تصميم شعار', { ingKey: 'printing' })]),
+    S('social', 'تصميم السوشال ميديا', [P('social_design', 'تصميم منشور', { ingKey: 'printing' })])
   ])
 ];
 

@@ -107,6 +107,39 @@ function migrate(db) {
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT,
     default_unit TEXT, notes TEXT, updated_by TEXT, updated_at TEXT NOT NULL
   );
+  /* مكتبة المكونات العامة (المرجع) — id مفتاح نصي مشتق من الاسم اللاتيني/العربي */
+  CREATE TABLE IF NOT EXISTS library_items (
+    key TEXT PRIMARY KEY, name TEXT NOT NULL, en_name TEXT, cls TEXT NOT NULL DEFAULT 'ingredient',
+    category TEXT, default_unit TEXT NOT NULL DEFAULT 'g', notes TEXT,
+    active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
+  );
+  /* اقتراحات التاجر (لا تدخل القاعدة العامة قبل مراجعة) */
+  CREATE TABLE IF NOT EXISTS merchant_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, unit TEXT, note TEXT, status TEXT NOT NULL DEFAULT 'pending'
+      CHECK(status IN ('pending','approved','rejected')),
+    reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL
+  );
+  /* بلاغ عن اقتراح غير مناسب */
+  CREATE TABLE IF NOT EXISTS suggestion_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, ing_key TEXT, name TEXT,
+    reason TEXT, created_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0
+  );
+  /* مكتبة التاجر الشخصية + سجل أسعاره */
+  CREATE TABLE IF NOT EXISTS merchant_items (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    library_key TEXT, name TEXT NOT NULL, unit TEXT NOT NULL, category TEXT,
+    last_price REAL, last_pack REAL, supplier TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS merchant_item_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, item_id TEXT NOT NULL REFERENCES merchant_items(id) ON DELETE CASCADE,
+    at TEXT NOT NULL, price REAL NOT NULL, pack REAL, unit TEXT, supplier TEXT, product_id TEXT, note TEXT
+  );
+  /* مقارنة الأسعار والاستيراد/التصدير */
+  CREATE TABLE IF NOT EXISTS catalog_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, by_user TEXT, kind TEXT,
+    summary TEXT, backup_name TEXT
+  );
 
   CREATE TABLE IF NOT EXISTS price_sources (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, kind TEXT NOT NULL,
@@ -190,6 +223,28 @@ function seedCatalog(db) {
   return { seeded: true, activities: (db.prepare('SELECT COUNT(*) AS n FROM catalog_activities').get() || {}).n };
 }
 
+/* ---------------- بذر مكتبة المكونات العامة ---------------- */
+const CATEGORY_OF = (cls) => ({
+  ingredient: 'مواد خام', extra: 'إضافات وحشوات', packaging: 'تغليف وتقديم', tool: 'أدوات ومستهلكات'
+}[cls] || 'مواد خام');
+
+function seedLibrary(db) {
+  const flag = db.prepare("SELECT value FROM meta WHERE key = 'library_seeded_v2'").get();
+  if (flag && flag.value === '1') return { seeded: false };
+  const { LIB } = require('./data/ingredient-library.js');
+  const ins = db.prepare(`INSERT OR REPLACE INTO library_items(key,name,en_name,cls,category,default_unit,notes,active,created_at)
+    VALUES(?,?,?,?,?,?,?,1,?)`);
+  const t = nowIso();
+  let n = 0;
+  Object.keys(LIB).forEach((k) => {
+    const x = LIB[k];
+    ins.run(k, x.name, x.en, x.cls, CATEGORY_OF(x.cls), x.unit, null, t);
+    n++;
+  });
+  db.prepare("INSERT OR REPLACE INTO meta(key,value) VALUES('library_seeded_v2','1')").run();
+  return { seeded: true, items: n };
+}
+
 /* ---------------- بذر ما تبقى ---------------- */
 function seedBase(db) {
   const t = nowIso();
@@ -230,10 +285,10 @@ function seedBase(db) {
 function init() {
   const db = open();
   const seed = seedCatalog(db);
+  const libSeed = seedLibrary(db);
   seedBase(db);
-  // ملاحظة: node:sqlite قد يحتفظ ببيانات في WAL — نُجبر الدمج لقراءة صحيحة من 같은 العملية
   try { db.exec('PRAGMA wal_checkpoint(FULL);'); } catch (e) {}
-  return { db, seed };
+  return { db, seed, libSeed };
 }
 
-module.exports = { init, open, backup, migrate, uid, nowIso, DB_FILE, BACKUP_DIR, DATA_DIR };
+module.exports = { init, open, backup, migrate, seedCatalog, seedLibrary, uid, nowIso, DB_FILE, BACKUP_DIR, DATA_DIR };

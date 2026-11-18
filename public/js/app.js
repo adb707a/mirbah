@@ -561,17 +561,6 @@
     const repeat = ingredientRepeatState();
     const collapsed = state.collapsedIng || {};
     const rows = state.ingredients.map((ing, i) => ingredientCard(ing, i, repeat[i], !!collapsed[i])).join('');
-    const product = activeProduct();
-    const sug = ingredientSuggester();
-    const chips = sug.items.map((x) => {
-      // التكرار يتحقق بالاسم فقط؛ الاقتراحات التي وردت بالقالب تُظهر ✓
-      const exists = state.ingredients.some((e) => String(e.name || '').trim() === x.name);
-      const cls = 'df-chip' + (exists ? ' is-added' : '') + (x.kind === 'optional' ? ' is-opt' : x.kind === 'packaging' ? ' is-pack' : '');
-      return `<button type="button" class="${cls}" data-action="suggest-add" data-name="${esc(x.name)}" data-kind="${x.kind}" ${exists ? 'disabled' : ''}>
-        ${exists ? '✓' : '＋'} ${esc(x.name)}${x.kind === 'packaging' ? ' <em>تغليف</em>' : x.kind === 'optional' ? ' <em>اختياري</em>' : ''}
-      </button>`;
-    }).join('');
-    const missing = sug.items.filter((x) => !state.ingredients.some((e) => String(e.name || '').trim() === x.name)).length;
 
     $('#wizardBody').innerHTML = `
       <div class="fade-up">
@@ -581,12 +570,11 @@
         </div>
         ${totalsBar(r)}
 
-        <div class="df-stage" data-stage="suggest">
-          <div class="df-stage-head"><span class="n">١</span><h4>اقتراحات لِـ «${esc(state.productName || (product ? product.name : 'منتجك'))}»</h4></div>
-          <p class="df-help">${sug.items.length} اقتراحًا مرتبًا حسب المنتج (${missing} متاح للإضافة). اضغط مرة لإضافته، أو اكتب مكوّنًا غير موجود بالأسفل.</p>
-          <div class="df-chips">${chips}</div>
-          <div class="df-search">
-            <input class="input" id="dfIngSearch" type="search" autocomplete="off" placeholder="ابحث عن مكوّن… مثلاً: سكر، شمع، خيط" />
+        <div class="df-stage" data-stage="suggest" id="dfSuggestStage">
+          <div class="df-stage-head"><span class="n">١</span><h4>اقتراحات لِـ «${esc(state.productName || 'منتجك')}»</h4></div>
+          <div id="dfSmartRoot" aria-live="polite"></div>
+          <div class="df-search" style="margin-top:10px">
+            <input class="input" id="dfIngSearch" type="search" autocomplete="off" placeholder="ابحث عن أي مكوّن… مثلاً: سكر، شمع، خيط" />
             <div class="df-search-results" id="dfIngSearchResults" hidden></div>
           </div>
           <button type="button" class="btn btn-secondary" data-action="add-ingredient">＋ مكوّن جديد من الصفر</button>
@@ -597,11 +585,56 @@
       </div>`;
     refreshEditorTotals();
     bindIngredientSearch();
+    mountSmartProposals();
   }
 
-  /* =============================================================
-     دفتر V3 — اقتراحات المكونات حسب المنتج (js/ingredient-suggestions.js)
-     ============================================================= */
+  /* دفتر V3: تركيب لوحة الاقتراحات الذكية (js/smart-proposals.js) */
+  function mountSmartProposals() {
+    const root = document.getElementById('dfSmartRoot');
+    if (!root || !window.MirbahProposals) return;
+    const product = activeProduct();
+    const ingKey = (product && (product.ingKey || product.id)) || state.productId || '';
+    window.MirbahProposals.mount(root, {
+      ingKey,
+      domainId: state.domainId,
+      productName: state.productName || (product ? product.name : ''),
+      existing: state.ingredients.map((x) => String(x.name || '').trim()).filter(Boolean)
+    });
+  }
+
+  /* جسر الاقتراحات: يُضيف مكوّنات إلى نفس نموذج الحالة ومحرك الحساب الموحد */
+  window.MirbahBridge = window.MirbahBridge || {};
+  window.MirbahBridge.addIngredient = function (name, unit) {
+    const nm = String(name || '').trim();
+    if (!nm) return false;
+    if (state.ingredients.some((x) => String(x.name || '').trim() === nm)) return false;
+    const allowed = ['g', 'ml', 'pc', 'm', 'kg', 'l', 'sheet', 'pair', 'box', 'bottle', 'bag', 'carton', 'set', 'spool'];
+    const u = allowed.indexOf(unit) > -1 ? unit : 'g';
+    state.ingredients.push({ name: nm, qty: 0, qtyUnit: u, pack: 0, packUnit: u, price: 0, type: 'estimated', marketPrice: '', marketStore: '' });
+    return true;
+  };
+  window.MirbahBridge.addMany = function (items) {
+    let n = 0;
+    (items || []).forEach(function (it) {
+      if (!it || !it.name) return;
+      if (window.MirbahBridge.addIngredient(it.name, it.unit)) {
+        const ing = state.ingredients[state.ingredients.length - 1];
+        if (it.pack != null && it.pack !== '') ing.pack = it.pack;
+        if (it.price != null && it.price !== '') ing.price = it.price;
+        n++;
+      }
+    });
+    return n;
+  };  window.MirbahBridge.afterAdd = function (n) {
+    clearAi();
+    renderStep();
+    if (n) {
+      const cards = document.querySelectorAll('.df-ing');
+      const last = cards[cards.length - 1];
+      if (last) { try { last.scrollIntoView({ block: 'center' }); } catch (e) {} }
+    }
+  };
+
   function ingredientSuggester() {
     const Sg = window.IngredientSuggestions;
     const product = activeProduct();
