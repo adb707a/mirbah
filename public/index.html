@@ -4,8 +4,8 @@
   <base href="./" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>مِرْباح — دَفْتَر · التسعير كما يُكتب باليد</title>
-  <meta name="description" content="دَفْتَر: نسخة ورقية دافئة لمِرْباح. أوراق اختيار، نثر رقمي، وفواصل منقّطة." />
+  <title>مِرْباح — اعرف تكلفة منتجك وحدد سعرك بثقة</title>
+  <meta name="description" content="مِرْباح يساعدك تحسب تكلفة منتجاتك وتنظم مكوناتك ومصاريفك وتعرف سعر البيع المناسب لها." />
   <meta name="api-base" content="" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -39,13 +39,13 @@
   <header class="df-top">
     <a href="#" class="df-mark" id="brandHome" aria-label="مِرْباح دَفْتَر"><b>مِرْباح</b><span>دَفْتَر</span></a>
     <nav class="df-tabs" aria-label="التنقل">
-      <a href="#df-how">كيف يُكتب</a>
+      <a href="#df-how">كيف يعمل</a>
       <a href="#df-rules">الحساب</a>
       <a href="#df-limits">الحدود</a>
       <button type="button" id="navResume">استئناف</button>
       <button type="button" id="navReset">تصفير</button>
     </nav>
-    <button class="df-btn" id="navStart" type="button" style="margin-inline-start:auto">افتح دفترًا جديدًا</button>
+    <button class="df-btn" id="navStart" type="button" style="margin-inline-start:auto">افتح الدفتر</button>
   </header>
 
   <main class="df-main">
@@ -54,26 +54,28 @@
     <section id="landing" class="df-landing">
       <div class="df-cover">
         <div>
-          <p class="df-folio"><b>دفتر / ٠١</b> تسعير السوق السعودي</p>
+          <p class="df-folio"><b>دفتر / ٠١</b> تسعير للمشاريع الصغيرة</p>
           <h1 class="df-title">
-            اكتب تكلفتك،<br />
-            ثم <em>بقّ سعرك.</em>
-            <small>أربع أوراق اختيار، وأربع صفحات حساب. لا شيء يُخفي نفسه، وكل رقم له سطر.</small>
+            <span>اعرف تكلفة منتجك.</span>
+            <span><em>وحدد سعرك بثقة.</em></span>
+            <small>من أول مكوّن إلى سعر البيع، خلّ حسابات مشروعك واضحة.</small>
           </h1>
 
-          <blockquote class="df-cover-quote">
-            «السعر الجيد لا يُخمَّن في السوق، بل يُحسب في البيت ثم يُعرض عليه.»
-          </blockquote>
+          <p class="df-cover-quote df-intro">
+            مِرْباح يساعدك تحسب تكلفة منتجاتك، وتنظم مكوناتك ومصاريفك، وتعرف كم يكلفك كل منتج قبل ما تحدد سعر بيعه.
+            كل حسابات مشروعك في مكان واحد، بطريقة واضحة وسهلة.
+          </p>
 
           <div class="df-cover-actions">
             <button class="df-btn" id="ctaStart" type="button">افتح الدفتر</button>
-            <button class="df-btn df-btn-quiet" id="ctaResume" type="button" style="display:none">أكمل من آخر سطر</button>
+            <a class="df-btn df-btn-quiet" id="ctaDiscover" href="#df-how">اكتشف مِرْباح</a>
+            <button class="df-btn df-btn-quiet" id="ctaResume" type="button" style="display:none">أكمل من حيث توقفت</button>
           </div>
         </div>
 
         <aside class="df-slip" aria-label="صفحة عيّنة">
-          <h3>علبة واحدة — درج المكوّنات</h3>
-          <p>مثال على ورقة جاهزة</p>
+          <h3>علبة واحدة — صفحة تجريبية</h3>
+          <p>مثال على دفتر مُكمَل</p>
           <dl>
             <div><dt>مكوّنات</dt><dd>6.40</dd></div>
             <div><dt>تغليف</dt><dd>1.80</dd></div>
@@ -81,74 +83,94 @@
             <div><dt>سعر البيع</dt><dd>18.00</dd></div>
             <div class="total"><dt>ربح العلبة</dt><dd>8.85</dd></div>
           </dl>
+          <p class="df-slip-foot">بالريال السعودي · الأرقام توضيحية</p>
         </aside>
       </div>
 
-      <!-- الطريقة: أربع صفحات -->
+      <!-- ٠١ ما تفعله مِرْباح -->
       <section class="df-sec" id="df-how">
         <div class="df-sec-head">
           <span class="df-sec-no">٠١</span>
           <div>
-            <h2>أربع صفحات فقط</h2>
-            <p>كل صفحة تجيب سؤالًا واحدًا، ثم تُطوى.</p>
+            <h2>ما تفعله مِرْباح</h2>
+            <p>أربعة أشياء متكررة في كل مشروع صغير.</p>
           </div>
         </div>
         <div class="df-method">
           <article>
             <div class="n">١</div>
-            <h3>الأرض</h3>
-            <p>منشأة، نشاط، تصنيف، منتج — أوراق تُلصق في الفهرس.</p>
+            <h3>احسب تكلفة منتجك</h3>
+            <p>أضف مكونات منتجك وكمياتها وأسعار شرائها، ودع مِرْباح يساعدك تعرف التكلفة الفعلية لكل منتج.</p>
           </article>
           <article>
             <div class="n">٢</div>
-            <h3>المواد</h3>
-            <p>سعر العبوة ومحتواها والكمية. يُوحَّد الوزن قبل الحساب.</p>
+            <h3>اعرف وين تروح فلوسك</h3>
+            <p>نظّم تكاليف المكونات والتغليف والمصاريف الأخرى حتى تكون عندك صورة أوضح عن مصروفات مشروعك.</p>
           </article>
           <article>
             <div class="n">٣</div>
-            <h3>الخفي</h3>
-            <p>تغليف، كهرباء، توصيل، وقتك، ورسوم الدفع إن قبلتها.</p>
+            <h3>حدد سعر البيع</h3>
+            <p>اعرف تكلفة منتجك، وشاهد كيف يؤثر هامش الربح الذي تختاره على سعر البيع والربح المتوقع.</p>
           </article>
           <article>
             <div class="n">٤</div>
-            <h3>القراءة</h3>
-            <p>نثر واحد يجمع التكلفة والسعر والربح والهامش والتعادل.</p>
+            <h3>كل منتجاتك في مكان واحد</h3>
+            <p>رتّب منتجاتك وتصنيفاتك ومكوناتها، وارجع لحساباتك وعدّلها متى احتجت.</p>
           </article>
         </div>
       </section>
 
-      <!-- بنود الحساب -->
-      <section class="df-sec" id="df-rules">
+      <!-- ٠٢ كيف تعمل معك -->
+      <section class="df-sec" id="df-steps">
         <div class="df-sec-head">
           <span class="df-sec-no">٠٢</span>
           <div>
-            <h2>بنود الحساب، مكتوبة لا مضمرة</h2>
-            <p>ما يدخل الورقة وما لا يدخل، في صفحة واحدة.</p>
+            <h2>كيف تعمل معك</h2>
+            <p>أربع خطوات، بلا خطوات زائدة.</p>
           </div>
         </div>
         <dl class="df-sheet">
-          <div class="df-sheet-line"><dt>تكاليف المكوّنات</dt><dd>سعر العبوة ÷ محتواها × الكمية المستخدمة، بعد توحيد الوحدة.</dd></div>
-          <div class="df-sheet-line"><dt>التغليف والتشغيل</dt><dd>تُوزّع على عدد الوحدات المنتجة، لا على سعر المكوّن.</dd></div>
-          <div class="df-sheet-line"><dt>رسوم الدفع</dt><dd>نسبة + مبلغ ثابت، تُخصم من الربح ولا ترفع تكلفة الوحدة.</dd></div>
-          <div class="df-sheet-line"><dt>مقارنة السوق</dt><dd>تُحوَّل العبوة إلى وحدة واحدة قبل المقارنة، وإلا بطلت المقارنة.</dd></div>
-          <div class="df-sheet-line"><dt>نقطة التعادل</dt><dd>التكاليف الثابتة ÷ ربح الوحدة بعد الرسوم. أقل من وحدة = لا تعادل.</dd></div>
-          <div class="df-sheet-line"><dt>الفحص الذكي</dt><dd>يحتاج تشغيل الخادم. إن غاب، تظهر حالة صريحة لا رقم مخترع.</dd></div>
+          <div class="df-sheet-line"><dt>اختر منتجك</dt><dd>حدّد نشاطك وتصنيفك والمنتج من دليل جاهز، أو اكتب منتجك بنفسك.</dd></div>
+          <div class="df-sheet-line"><dt>سجّل ما اشتريت</dt><dd>كمية العبوة وسعرها، والجزء الذي استخدمته في صناعة منتجك.</dd></div>
+          <div class="df-sheet-line"><dt>أضف باقي التكاليف</dt><dd>تغليف وتوصيل ومصاريف تشغيل، وإن استخدمت بوابات دفع أضف رسومها.</dd></div>
+          <div class="df-sheet-line"><dt>اقرأ النتيجة</dt><dd>تكلفة المنتج، وسعر البيع المقترح من هامش ربحك، والربح ونقطة التعادل.</dd></div>
         </dl>
       </section>
 
-      <!-- الحدود -->
-      <section class="df-sec" id="df-limits">
+      <!-- ٠٣ الحساب الموضّح -->
+      <section class="df-sec" id="df-rules">
         <div class="df-sec-head">
           <span class="df-sec-no">٠٣</span>
           <div>
-            <h2>ما لا يُكتب في الدفتر</h2>
-            <p>لا سعر سوق مخترع، لا بيانات تغادر جهازك، لا رسوم لم تفعّلها.</p>
+            <h2>حسابات مُوضَّحة</h2>
+            <p>ما تحتاجه تعرفه عن كل رقم في دفترك.</p>
           </div>
         </div>
         <dl class="df-sheet">
+          <div class="df-sheet-line"><dt>تكلفة المكوّن</dt><dd>سعر العبوة × ما استخدمته ÷ ما اشتريته. الجزء فقط، لا العبوة كاملة.</dd></div>
+          <div class="df-sheet-line"><dt>الوحدات</dt><dd>الوزن بالوزن، والحجم بالحجم، والعدد بالعدد. لا تحويل بينها بلا معلومة مؤكدة.</dd></div>
+          <div class="df-sheet-line"><dt>التغليف والتشغيل</dt><dd>تُوزّع على عدد المنتجات في الدفعة، لا على المنتج الواحد فقط.</dd></div>
+          <div class="df-sheet-line"><dt>سعر البيع</dt><dd>مقترح من هامش الربح الذي تختاره، وتقدر تعدّله كما تشاء.</dd></div>
+          <div class="df-sheet-line"><dt>رسوم الدفع</dt><dd>تُخصم من الربح عند تفعيلها فقط، ولا تُحسب داخل تكلفة الصناعة.</dd></div>
+          <div class="df-sheet-line"><dt>أسعار المتاجر</dt><dd>ربط أسعار المتاجر الآلي غير مفعّل. المقارنة تتم بما تُدخله بنفسك.</dd></div>
+        </dl>
+      </section>
+
+      <!-- ٠٤ الحدود -->
+      <section class="df-sec" id="df-limits">
+        <div class="df-sec-head">
+          <span class="df-sec-no">٠٤</span>
+          <div>
+            <h2>حدود واضحة</h2>
+            <p>حتى تعرف ما تحصل عليه، وما تحتاج تعرفه أنت.</p>
+          </div>
+        </div>
+        <dl class="df-sheet">
+          <div class="df-sheet-line"><dt>أسعار السوق</dt><dd>لا نجلب أسعار المتاجر تلقائيًا. أدخل ما اشتريت به وسنحسب عليه.</dd></div>
+          <div class="df-sheet-line"><dt>بياناتك</dt><dd>حساباتك محفوظة لك، ولا نشاركها مع تجار آخرين.</dd></div>
           <div class="df-sheet-line"><dt>العملة</dt><dd>ريال سعودي.</dd></div>
-          <div class="df-sheet-line"><dt>التخزين</dt><dd>في متصفحك فقط، بلا حساب.</dd></div>
-          <div class="df-sheet-line"><dt>التحليل الذكي</dt><dd id="aiStatusBadge">جارٍ الفحص…</dd></div>
+          <div class="df-sheet-line"><dt>التقديرات</dt><dd>الأرقام تعتمد على إدخالك، وقد تختلف بالمتجر والمدينة والوقت.</dd></div>
+          <div class="df-sheet-line"><dt>المساعد الذكي</dt><dd id="aiStatusBadge">جارٍ الفحص…</dd></div>
         </dl>
       </section>
     </section>
@@ -177,13 +199,12 @@
   </main>
 
   <footer class="df-foot">
-    <div><b>مِرْباح — دَفْتَر</b>ورقة تسعير للسوق السعودي. الأرقام تقديرية وتتغير بالمدينة والمتجر والوقت.</div>
+    <div><b>مِرْباح — دَفْتَر</b>ورقة تسعير للمشاريع الصغيرة في السوق السعودي. النتائج تعتمد على أسعار شرائك.</div>
     <div>٢٠٢٦ · SAR</div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="js/data.js"></script>
-
   <script src="js/smart-units.js"></script>
   <script src="js/ingredient-suggestions.js"></script>
   <script src="js/calc.js"></script>
@@ -194,9 +215,20 @@
   <script src="js/smart-proposals.js"></script>
   <script src="js/app.js"></script>
   <script>
+    /* «اكتشف مِرْباح»: رابط داخلي يمرّر لقسم الشرح (لا يغيّر أي وظيفة) */
+    (function () {
+      var d = document.getElementById('ctaDiscover');
+      if (!d) return;
+      d.addEventListener('click', function (e) {
+        var t = document.getElementById('df-how');
+        if (!t) return;
+        e.preventDefault();
+        t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    })();
     /* إعادة رسم الشجرة بعد وصول كتالوج الخادم (إن كان متاحًا) */
     window.addEventListener('mirbah:catalog', function () {
-      try { if (window.__MIRBAH_CATALOG_LIVE__ && document.getElementById('wizard') && !document.getElementById('wizard').classList.contains('hidden')) { window.location.hash = ''; document.getElementById('navStart') && null; } } catch (e) {}
+      try { if (window.__MIRBAH_CATALOG_LIVE__ && document.getElementById('wizard') && !document.getElementById('wizard').classList.contains('hidden')) { window.location.hash = ''; } } catch (e) {}
     });
   </script>
 </body>

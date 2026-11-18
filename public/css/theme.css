@@ -237,7 +237,9 @@
 
 /* أوراق الخيارات */
 .df-leaves { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.df-sheet {
+/* ملاحظة: أوراق الخيارات تحتاج .df-sheet كـ button داخل .df-leaves فقط؛
+   البطاقة الورقية لقوائم «كيف تعمل معك» و«الحساب» تستخدم .df-sheet على dl */
+.df-leaves .df-sheet {
   width: 100%; text-align: start; cursor: pointer; font-family: inherit;
   display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: baseline;
   background: var(--df-page); border: 1px solid var(--df-rule); border-radius: 2px;
@@ -253,6 +255,13 @@
 .df-sheet.df-picked { border-color: var(--df-clay); background: #fbf1e8; }
 .df-sheet.df-picked .df-sheet-no { color: var(--df-ink); }
 .df-sheet.df-fold { opacity: .32; transform: scale(.985) rotate(.5deg); }
+
+/* البطاقة الورقية لقوائم الصفحة (dl.df-sheet): عمودان ثابتان، بلا تأثير لمس الأوراق */
+dl.df-sheet { display: block; width: auto; cursor: auto; text-align: start; background-image: none; }
+dl.df-sheet:hover { transform: none; box-shadow: var(--shadow); border-color: var(--df-rule); }
+@media (max-width: 680px) {
+  dl.df-sheet .df-sheet-line { grid-template-columns: 1fr; gap: 2px; }
+}
 
 /* ---------------- عناصر app.js ---------------- */
 .df-body .card { padding: 18px; }
@@ -359,3 +368,18 @@
   .df-body .fade-up, .df-body .fade-in { animation: none !important; }
   .df-sheet:hover { transform: none; }
 }
+
+/* ============ صفحة البداية: نصوص المحتوى الجديد (بلا تغيير في الهوية) ============ */
+.df-body .df-title span { display: block; }
+.df-body .df-title small {
+  display: block; font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: .27em;
+  letter-spacing: 0; line-height: 1.85; color: var(--df-ink-2); font-weight: 400;
+  margin-block-start: .55em; max-width: 30ch;
+}
+.df-body .df-cover-quote.df-intro {
+  font-family: 'IBM Plex Sans Arabic', sans-serif; font-style: normal; font-size: .97rem;
+  line-height: 2; color: var(--df-ink-2); border-inline-start: 2px solid var(--df-clay);
+  padding-inline-start: 14px; margin-block: 20px 22px; max-width: 50ch;
+}
+.df-body .df-slip-foot { font-size: .66rem !important; color: var(--df-ink-3) !important; margin-block-start: 10px !important; }
+.df-body .df-cover-actions .df-btn-quiet[href] { text-decoration: none; display: inline-flex; align-items: center; }

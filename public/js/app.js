@@ -180,8 +180,9 @@
     const btn = $('#ctaResume');
     const nav = $('#navResume');
     const canResume = state.started && (state.projectTypeId || state.productId);
-    if (btn) btn.style.display = canResume ? '' : 'none';
-    if (nav) nav.style.display = canResume ? '' : 'none';
+    // «افتح الدفتر» يبقى الدعوة الأساسية دائمًا؛ زر الاستئناف يظهر بجانبه عند وجود عمل سابق
+    if (btn) { btn.hidden = !canResume; btn.style.display = canResume ? '' : 'none'; }
+    if (nav) { nav.hidden = !canResume; nav.style.display = canResume ? '' : 'none'; }
   }
 
   /* ---------------- شريط التقدم والسجل ---------------- */
