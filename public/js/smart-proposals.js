@@ -18,7 +18,29 @@
 
   let ctx = { root: null, items: [], selected: {}, meta: {}, source: 'none' };
 
-  async function fetchSuggestions(ingKey, domainId) {
+  async function fetchSuggestions(ingKey, domainId, productId) {
+    // ١) مخطط المنتج أولًا: مجموعات باسمها الحقيقي ووحدات واقعية
+    const SC = global.ProductSchemas;
+    if (SC) {
+      const sch = SC.schemaFor(domainId, productId || ingKey);
+      if (sch && Array.isArray(sch.groups) && sch.groups.length) {
+        const items = [];
+        sch.groups.forEach(function (g) {
+          (g.items || []).forEach(function (it) {
+            items.push({
+              name: it.name, unit: it.unit || 'g', kind: 'schema',
+              groupTitle: g.title, groupNote: g.note || '',
+              calcMode: it.calcMode || 'portion', qty: it.qty || 0,
+              directCost: it.directCost, subAmount: it.subAmount,
+              subPeriod: it.subPeriod, projectsPerMonth: it.projectsPerMonth,
+              piecesPerPack: it.piecesPerPack, piecesUsed: it.piecesUsed
+            });
+          });
+        });
+        if (items.length) return { source: 'schema', items: items };
+      }
+    }
+    // ٢) اقتراحات الخادم/المكتبة (احتياط)
     try {
       if (location.protocol !== 'file:') {
         const key = ingKey || ('domain:' + (domainId || ''));
@@ -43,21 +65,36 @@
     const score = (n) => { let s2 = 0; (ctx.meta.usage || []).forEach((u) => { if (n.indexOf(u.name) > -1) s2 += u.count; }); return s2; };
     if (score('')) { /* لا شيء */ }
 
-    const groups = GROUPS.map((g) => {
-      const list = ctx.items.filter((x) => (x.kind || 'core') === g.id);
-      if (!list.length) return '';
+    let groupDefs;
+    if (ctx.items.some((x) => x.groupTitle)) {
+      const seen = [];
+      ctx.items.forEach((x) => {
+        if (!seen.some((s) => s.title === x.groupTitle)) seen.push({ title: x.groupTitle, note: x.groupNote || '' });
+      });
+      groupDefs = seen.map((g, i) => ({
+        id: 'sg' + i, label: g.title, note: g.note,
+        list: ctx.items.filter((x) => x.groupTitle === g.title)
+      }));
+    } else {
+      groupDefs = GROUPS.map((g) => ({ id: g.id, label: g.label, note: g.note, list: ctx.items.filter((x) => (x.kind || 'core') === g.id) }))
+        .filter((g) => g.list.length);
+    }
+
+    const groups = groupDefs.map((g) => {
+      const list = g.list;
       // الأكثر استخدامًا أولًا، ثم الأسرع في التوصية
       const ordered = list.slice().sort((a, b) => score(b.name) - score(a.name));
       const chips = ordered.map((x) => {
         const isDup = existing.has(x.name);
         const on = !!ctx.selected[x.name];
         const uses = score(x.name);
-        return `<button type="button" class="df-pick${on ? ' on' : ''}${isDup ? ' is-dup' : ''}" data-name="${E(x.name)}" data-unit="${E(x.unit || 'g')}" aria-pressed="${on}"
-          title="${isDup ? 'موجود في المنتج' : uses ? 'استُخدم ' + arNo(uses) + ' مرة' : 'اختر لإضافته'}"><i>${on ? '✓' : isDup ? '•' : '+'}</i> ${E(x.name)}${uses ? ' <em class="use">' + arNo(uses) + '</em>' : ''}${x.ai ? ' <em class="ai">ذكي</em>' : ''}</button>`;
+        const modeTag = x.calcMode && x.calcMode !== 'portion' ? `<em class="mode-tag">${{ count: 'عدد', amortized: 'اشتراك', direct: 'مباشر' }[x.calcMode] || ''}</em>` : '';
+        return `<button type="button" class="df-pick${on ? ' on' : ''}${isDup ? ' is-dup' : ''}" data-name="${E(x.name)}" aria-pressed="${on}"
+          title="${isDup ? 'موجود في المنتج' : uses ? 'استُخدم ' + arNo(uses) + ' مرة' : 'اختر لإضافته'}"><i>${on ? '✓' : isDup ? '•' : '+'}</i> ${E(x.name)}${modeTag}${uses ? ' <em class="use">' + arNo(uses) + '</em>' : ''}${x.ai ? ' <em class="ai">ذكي</em>' : ''}</button>`;
       }).join('');
       return `<section class="df-pick-group" data-group="${g.id}">
         <button type="button" class="df-pick-head" data-toggle="${g.id}" aria-expanded="true">
-          <span class="n">${arNo(list.length)}</span><b>${g.label}</b><small>${g.note}</small><span class="chev">▴</span>
+          <span class="n">${arNo(list.length)}</span><b>${E(g.label)}</b><small>${E(g.note || '')}</small><span class="chev">▴</span>
         </button>
         <div class="df-pick-body">${chips}</div>
       </section>`;
@@ -66,7 +103,7 @@
     root.innerHTML = `
       <div class="df-smart">
         <div class="df-smart-head">
-          <p class="hint">${arNo(ctx.items.length)} اقتراحًا${ctx.source === 'server' ? '' : ' (نسخة محلية)'}${dup ? ` · ${arNo(dup)} منها في المنتج` : ''}. اختر ما يناسبك ثم أضِفه دفعة واحدة.</p>
+          <p class="hint">${arNo(ctx.items.length)} اقتراحًا${ctx.source === 'schema' ? ' مخصصة لهذا المنتج' : ctx.source === 'server' ? '' : ' (نسخة محلية)'}${dup ? ` · ${arNo(dup)} منها في المنتج` : ''}. اختر ما يناسبك ثم أضِفه دفعة واحدة.</p>
           <input id="dfSmartSearch" type="search" placeholder="ابحث في الاقتراحات…" aria-label="بحث في الاقتراحات" />
         </div>
         <div class="df-pick-groups">${groups}</div>
@@ -86,8 +123,10 @@
 
     root.querySelectorAll('.df-pick').forEach((b) => b.addEventListener('click', () => {
       const k = b.getAttribute('data-name');
-      if (!ctx.selected[k]) ctx.selected[k] = { name: k, unit: b.getAttribute('data-unit') };
-      else delete ctx.selected[k];
+      if (!ctx.selected[k]) {
+        const it = ctx.items.filter((x) => x.name === k)[0] || { name: k, unit: b.getAttribute('data-unit') || 'g' };
+        ctx.selected[k] = it;
+      } else delete ctx.selected[k];
       const on = !!ctx.selected[k];
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
@@ -136,20 +175,22 @@
     if (!picked.length) return;
     const api = global.MirbahBridge;
     if (!api || typeof api.addIngredient !== 'function') { alert('تعذّر الوصول إلى الحاسبة — أعد فتح الصفحة.'); return; }
-    if (typeof api.addMany !== 'function') { alert('حدّث الصفحة لإضافة مجموعة مكونات.'); return; }
+    if (typeof api.addMany !== 'function') { alert('حدّث الصفحة لإضافة مجموعة عناصر.'); return; }
     const host = document.getElementById('dfSmartRoot');
     const names = picked.map((p) => p.name).join('، ');
     let box = host.querySelector('.df-pickbox');
     if (box) box.remove();
+    const unitNames = { g: 'جرام', kg: 'كيلوجرام', mg: 'مليجرام', ml: 'ملليلتر', l: 'لتر', pc: 'حبة', m: 'متر', cm: 'سنتيمتر', tola: 'تولة', ounce: 'أوقية', thumn: 'ثمن', skein: 'شلّة', spool: 'بكرة', sheet: 'ورقة', dozen: 'درزن', cup: 'كوب', pump: 'ضغطة', shot: 'شوت', yard: 'ياردة', box: 'علبة', bottle: 'زجاجة', roll: 'رول', license: 'رخصة', subscription: 'اشتراك' };
+    const units = Array.from(new Set(picked.map((p) => p.unit || 'g').concat(['g', 'kg', 'ml', 'l', 'pc', 'm'])));
     host.insertAdjacentHTML('beforeend', `
-      <div class="df-pickbox" role="dialog" aria-label="بيانات المكون المحدد">
+      <div class="df-pickbox" role="dialog" aria-label="بيانات الشراء">
         <div class="df-pickbox-head"><b>املأ حجم العبوة وسعرها</b><span class="hint">تُطبَّق على: ${E(names)}</span></div>
         <div class="df-pickbox-fields">
           <div><label class="ld">الكمية المشتراة</label><input class="input" id="dfBulkPack" inputmode="decimal" placeholder="مثال: 1000" /></div>
           <div><label class="ld">سعر العبوة (ر.س)</label><input class="input" id="dfBulkPrice" inputmode="decimal" placeholder="مثال: 6" /></div>
           <div><label class="ld">الوحدة</label>
             <select class="input" id="dfBulkUnit">
-              ${['g', 'kg', 'ml', 'l', 'pc', 'm'].map((u) => `<option value="${u}" ${u === picked[0].unit ? 'selected' : ''}>${{ g: 'جرام', kg: 'كيلوجرام', ml: 'ملليلتر', l: 'لتر', pc: 'حبة', m: 'متر' }[u]}</option>`).join('')}
+              ${units.map((u) => `<option value="${u}" ${u === (picked[0].unit || 'g') ? 'selected' : ''}>${unitNames[u] || u}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -163,7 +204,23 @@
       const pack = document.getElementById('dfBulkPack').value;
       const price = document.getElementById('dfBulkPrice').value;
       const unit = document.getElementById('dfBulkUnit').value;
-      const items = picked.map((p) => ({ name: p.name, unit: unit, pack: pack, price: price }));
+      const items = picked.map((p) => {
+        const mode = p.calcMode || 'portion';
+        const it = { name: p.name, unit: p.unit || unit, calcMode: mode };
+        if (p.qty) it.qty = p.qty;
+        if (mode === 'direct') {
+          it.directCost = p.directCost != null ? p.directCost : (price || 0);
+        } else if (mode === 'amortized') {
+          it.subAmount = p.subAmount != null ? p.subAmount : (price || 0);
+          it.projectsPerMonth = p.projectsPerMonth != null ? p.projectsPerMonth : 1;
+          it.subPeriod = p.subPeriod || 'monthly';
+        } else {
+          if (pack !== '') { it.pack = pack; it.packUnit = unit; }
+          if (price !== '') it.price = price;
+          if (mode === 'count' && pack !== '') { it.piecesPerPack = pack; it.piecesUsed = p.qty || 0; }
+        }
+        return it;
+      });
       const added = api.addMany(items) || 0;
       ctx.selected = {};
       const b = host.querySelector('.df-pickbox');
@@ -234,7 +291,7 @@
 
   async function mount(root, meta) {
     ctx = { root, items: [], selected: {}, meta: meta || {}, source: 'none', usage: [] };
-    const res = await fetchSuggestions(ctx.meta.ingKey, ctx.meta.domainId);
+    const res = await fetchSuggestions(ctx.meta.ingKey, ctx.meta.domainId, ctx.meta.productId);
     ctx.source = res.source;
     ctx.items = res.items;
     // المكونات الأكثر استخدامًا عند التاجر (إن كان مسجّلًا)

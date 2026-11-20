@@ -102,20 +102,42 @@
 
   /* ---------------- تكلفة مكوّن ---------------- */
   function ingredientCost(ing) {
-    const pack = nonNeg(ing.pack);
-    const qty = nonNeg(ing.qty);
+    const mode = ing.calcMode || 'portion';
+
+    // ٤) تكلفة مباشرة للمشروع (أجرة خارجية، رخصة لعميل واحد، خدمة مساعدة)
+    if (mode === 'direct') {
+      const direct = nonNeg(ing.directCost != null ? ing.directCost : ing.price);
+      return { costUsed: round2(direct), leftoverValue: 0, incompatible: false, ratio: direct > 0 ? 1 : 0, calcMode: 'direct' };
+    }
+
+    // ٣) توزيع الاشتراك على مشاريع الشهر
+    if (mode === 'amortized') {
+      const sub = nonNeg(ing.subAmount != null ? ing.subAmount : ing.price);
+      const months = ing.subPeriod === 'yearly' ? 12 : 1;
+      const projects = Math.max(1, nonNeg(ing.projectsPerMonth) || 1);
+      const perProject = round2((sub / months) / projects);
+      return { costUsed: perProject, leftoverValue: 0, incompatible: false, ratio: sub > 0 ? 1 : 0, calcMode: 'amortized', perProject };
+    }
+
+    // ١ و٢) الاستهلاك الجزئي والقطع والعدد — كلاهما سعر الحزمة × المستخدم ÷ المشترى
+    let pack = nonNeg(ing.pack);
+    let qty = nonNeg(ing.qty);
+    if (mode === 'count') {
+      if (nonNeg(ing.piecesPerPack) > 0) pack = nonNeg(ing.piecesPerPack);
+      if (nonNeg(ing.piecesUsed) > 0) qty = nonNeg(ing.piecesUsed);
+    }
     const price = nonNeg(ing.price);
-    const qtyUnit = ing.qtyUnit || ing.unit || 'g';
-    const packUnit = ing.packUnit || ing.unit || 'g';
-    if (pack <= 0) return { costUsed: 0, leftoverValue: round2(price), incompatible: false, ratio: 0 };
+    const qtyUnit = mode === 'count' ? 'pc' : (ing.qtyUnit || ing.unit || 'g');
+    const packUnit = mode === 'count' ? 'pc' : (ing.packUnit || ing.unit || 'g');
+    if (pack <= 0) return { costUsed: 0, leftoverValue: round2(price), incompatible: false, ratio: 0, calcMode: mode };
     const r = usageRatio(qty, qtyUnit, pack, packUnit);
     if (r == null) {
-      return { costUsed: 0, leftoverValue: round2(price), incompatible: true, ratio: 0 };
+      return { costUsed: 0, leftoverValue: round2(price), incompatible: true, ratio: 0, calcMode: mode };
     }
     const ratio = Math.min(r, 1.5);
     const costUsed = round2(price * ratio);
     const leftoverValue = round2(Math.max(0, price - costUsed));
-    return { costUsed, leftoverValue, incompatible: false, ratio: r };
+    return { costUsed, leftoverValue, incompatible: false, ratio: r, calcMode: mode };
   }
 
   /* ---------------- تكلفة عنصر تغليف ---------------- */

@@ -33,6 +33,27 @@
   const D = window.AppData;
   const Calc = window.Calc;
 
+  /* ---------------- مخططات المنتجات (طبقة بيانات مستقلة) ---------------- */
+  function schemas() { return window.ProductSchemas || null; }
+  function activeProfile() {
+    const S = schemas();
+    return S ? S.profileFor(state.domainId) : {
+      step4: 'المكونات والتكاليف', step5: 'التغليف والاستهلاكيات',
+      summary: { main: 'المكونات', pack: 'التغليف', ops: 'التشغيل + الوقت' },
+      packaging: true
+    };
+  }
+  function stepTitle(key) {
+    const p = activeProfile();
+    const base = {
+      project: 'ما نوع منشأتك؟', domain: 'ما نوع نشاطك؟',
+      subcategory: 'أي تصنيف أقرب لمنتجك؟', product: 'اختر المنتج',
+      ingredients: p.step4, packaging: p.step5,
+      operations: 'المصاريف التشغيلية ووقتك', pricing: 'سعر البيع المتوقع', results: 'نتائج التسعير'
+    };
+    return base[key] || 'رحلة التسعير';
+  }
+
   let state = defaultState();
   let charts = [];
   let saveTimer = null;
@@ -192,14 +213,15 @@
       const done = s.idx < active;
       const isActive = s.idx === active;
       const allowed = s.idx === 0 || (s.idx === 1 ? !!state.projectTypeId : s.idx === 2 ? !!state.subcategoryId : s.idx === 7 ? (!!state.productId && Calc.num(state.sellPrice) > 0) : !!state.productId);
+      // اسم الخطوتين ٤ و٥ يتغيّر حسب نشاط المنتج (مخططات المنتجات)
+      const label = s.idx === 3 ? activeProfile().step4 : s.idx === 4 ? activeProfile().step5 : s.label;
       return `<button type="button" class="step-item ${isActive ? 'active' : ''} ${done ? 'done' : ''}" data-action="goto" data-step="${s.go}" ${allowed ? '' : 'disabled'} style="${allowed ? '' : 'opacity:.35;pointer-events:none'}">
-        <span class="step-dot">${done ? '✓' : i + 1}</span><span>${s.label}</span>
+        <span class="step-dot">${done ? '✓' : i + 1}</span><span>${label}</span>
       </button>${i < STEPPER.length - 1 ? '<span class="faint text-[10px] px-0.5">—</span>' : ''}`;
     }).join('');
     const pct = Math.round(((active + 1) / STEPPER.length) * 100);
     $('#progressFill').style.width = pct + '%';
-    const titles = { project: 'ما نوع منشأتك؟', domain: 'ما نوع نشاطك؟', subcategory: 'أي تصنيف أقرب لمنتجك؟', product: 'اختر المنتج', ingredients: 'المكونات والتكاليف', packaging: 'التغليف والاستهلاكيات', operations: 'المصاريف التشغيلية ووقتك', pricing: 'سعر البيع المتوقع', results: 'نتائج التسعير' };
-    $('#wizardTitle').textContent = titles[state.step] || 'رحلة التسعير';
+    $('#wizardTitle').textContent = stepTitle(state.step);
   }
 
   function renderHistory() {
@@ -388,11 +410,17 @@
     return { activeIndex: active, levels, subtitle: TREE_LEVELS[active] ? treeLevelOptions(TREE_LEVELS[active].key).subtitle : '' };
   }
 
+  function activitySector(id) {
+    const S = schemas();
+    if (!S) return null;
+    return S.SECTORS.filter((sec) => sec.activities.indexOf(id) > -1)[0] || null;
+  }
+
   function treeLevelOptions(key) {
     if (key === 'project') {
       return {
         subtitle: 'اختر نوع المنشأة الأقرب لوضعك، وستتفرّع شجرة النشاط تلقائيًا.',
-        options: D.PROJECT_TYPES.map((p) => ({ id: p.id, icon: p.icon, title: p.name, desc: p.desc }))
+        options: D.PROJECT_TYPES.map((p) => ({ id: p.id, icon: p.id, title: p.name, desc: p.desc, search: p.desc }))
       };
     }
     if (key === 'domain') {
@@ -402,7 +430,18 @@
         subtitle: 'أنشطة مناسبة لـ «' + pt.name + '».',
         options: pt.domains.map((id) => {
           const d = D.getDomain(id);
-          return d ? { id: d.id, icon: d.icon, title: d.name, desc: d.subcategories.map((s) => s.name).slice(0, 3).join(' · ') } : null;
+          if (!d) return null;
+          const sec = activitySector(id);
+          const names = d.subcategories.map((s) => s.name);
+          return {
+            id: d.id, icon: d.id, title: d.name,
+            desc: names.slice(0, 3).join(' · '),
+            search: names.join(' '),
+            sector: sec ? sec.id : '',
+            sectorName: sec ? sec.name : '',
+            count: d.subcategories.reduce((a, s) => a + (s.products ? s.products.length : 0), 0),
+            countLabel: 'منتج'
+          };
         }).filter(Boolean)
       };
     }
@@ -411,15 +450,37 @@
       if (!dm) return null;
       return {
         subtitle: 'تصنيفات «' + dm.name + '».',
-        options: dm.subcategories.map((s) => ({ id: s.id, icon: '🗂️', title: s.name, desc: s.products.length + ' منتج' }))
+        options: dm.subcategories.map((s) => ({
+          id: s.id, icon: 'subcategory', title: s.name,
+          desc: (s.products || []).slice(0, 3).map((p) => p.name).join(' · '),
+          search: (s.products || []).map((p) => p.name).join(' '),
+          count: (s.products || []).length, countLabel: 'منتج'
+        }))
       };
     }
     if (key === 'product') {
       const sc = D.getSubcategory(state.domainId, state.subcategoryId);
       if (!sc) return null;
+      const productCards = sc.products.map((p) => {
+        const SC = schemas();
+        const sch = SC ? SC.schemaFor(state.domainId, p.id) : null;
+        const groups = sch && sch.groups ? sch.groups.map((g) => g.title).slice(0, 2).join(' · ') : '';
+        return {
+          id: p.id, icon: state.domainId, title: p.name,
+          desc: groups || (p.tpl ? 'قالب مفصّل جاهز' : 'قالب افتراضي'),
+          search: groups
+        };
+      });
+      // خيار حقيقي في نهاية كل تصنيف: منتج غير مدرج بقالب عام
+      productCards.push({
+        id: '__other_product__', icon: 'product',
+        title: '➕ نشاط أو منتج آخر',
+        desc: 'قالب عام — أضف مكوناتك وتكاليفك بنفسك',
+        search: 'منتج آخر نشاط آخر قالب عام'
+      });
       return {
         subtitle: 'منتجات «' + sc.name + '». سنبدأ بقالب قابل للتعديل بالكامل.',
-        options: sc.products.map((p) => ({ id: p.id, icon: '📦', title: p.name, desc: p.tpl ? 'قالب مفصّل جاهز' : 'قالب افتراضي' }))
+        options: productCards
       };
     }
     return null;
@@ -466,6 +527,7 @@
 
     Tree.observe();
     Tree.drawSoon();
+    if (typeof Tree.bindSearch === 'function') Tree.bindSearch();
     // تمرير داخلي فقط داخل لوحة الشجرة، وبحركة ناعمة نحو العقدة الجديدة
     if (typeof Tree.revealActiveNode === 'function') Tree.revealActiveNode();
     else Tree.scrollToActive(true);
@@ -562,12 +624,12 @@
     const repeat = ingredientRepeatState();
     const collapsed = state.collapsedIng || {};
     const rows = state.ingredients.map((ing, i) => ingredientCard(ing, i, repeat[i], !!collapsed[i])).join('');
+    const p = activeProfile();
 
     $('#wizardBody').innerHTML = `
       <div class="fade-up">
         <div class="df-sec-title">
-          <h3>المكونات والتكاليف</h3>
-          <p>ثلاثة أسطر لكل مكوّن: ما اشتريته، وبكم، وكم استخدمت. النظام يحاسبك على الجزء المستهلك فقط.</p>
+          <p>${esc(p.step4)} — ثلاثة أسطر لكل عنصر: ما اشتريته، وبكم، وكم استخدمت. النظام يحاسبك على الجزء المستهلك فقط.</p>
         </div>
         ${totalsBar(r)}
 
@@ -578,11 +640,11 @@
             <input class="input" id="dfIngSearch" type="search" autocomplete="off" placeholder="ابحث عن أي مكوّن… مثلاً: سكر، شمع، خيط" />
             <div class="df-search-results" id="dfIngSearchResults" hidden></div>
           </div>
-          <button type="button" class="btn btn-secondary" data-action="add-ingredient">＋ مكوّن جديد من الصفر</button>
+          <button type="button" class="btn btn-secondary" data-action="add-ingredient">＋ عنصر جديد من الصفر</button>
         </div>
 
-        <div class="df-ing-list">${rows || '<p class="df-empty">لم تُضف مكونات بعد. ابدأ من الاقتراحات بالأعلى.</p>'}</div>
-        ${editorFooter('product', 'packaging', 'التالي: التغليف')}
+        <div class="df-ing-list">${rows || '<p class="df-empty">لم تُضف عناصر بعد. ابدأ من الاقتراحات بالأعلى.</p>'}</div>
+        ${editorFooter('product', 'packaging', 'التالي: ' + p.step5)}
       </div>`;
     refreshEditorTotals();
     bindIngredientSearch();
@@ -598,6 +660,7 @@
     window.MirbahProposals.mount(root, {
       ingKey,
       domainId: state.domainId,
+      productId: state.productId,
       productName: state.productName || (product ? product.name : ''),
       existing: state.ingredients.map((x) => String(x.name || '').trim()).filter(Boolean)
     });
@@ -605,23 +668,45 @@
 
   /* جسر الاقتراحات: يُضيف مكوّنات إلى نفس نموذج الحالة ومحرك الحساب الموحد */
   window.MirbahBridge = window.MirbahBridge || {};
-  window.MirbahBridge.addIngredient = function (name, unit) {
+  window.MirbahBridge.addIngredient = function (name, unit, opts) {
     const nm = String(name || '').trim();
     if (!nm) return false;
     if (state.ingredients.some((x) => String(x.name || '').trim() === nm)) return false;
-    const allowed = ['g', 'ml', 'pc', 'm', 'kg', 'l', 'sheet', 'pair', 'box', 'bottle', 'bag', 'carton', 'set', 'spool'];
+    const o = opts || {};
+    const allowed = ['g', 'kg', 'mg', 'ton', 'ml', 'l', 'tola', 'shot', 'pc', 'piece', 'sheet', 'pair', 'box', 'bottle', 'bag', 'carton', 'set', 'spool', 'skein', 'pump', 'dozen', 'roll', 'license', 'subscription', 'mm', 'cm', 'm', 'yard', 'tsp', 'tbsp', 'cup', 'serving', 'hour', 'project', 'custom', 'ounce', 'thumn'];
     const u = allowed.indexOf(unit) > -1 ? unit : 'g';
-    state.ingredients.push({ name: nm, qty: 0, qtyUnit: u, pack: 0, packUnit: u, price: 0, type: 'estimated', marketPrice: '', marketStore: '' });
+    const mode = ['portion', 'count', 'amortized', 'direct'].indexOf(o.calcMode) > -1 ? o.calcMode : 'portion';
+    const ing = {
+      name: nm, qty: o.qty != null ? o.qty : 0, qtyUnit: u,
+      pack: 0, packUnit: u, price: 0, type: 'estimated',
+      marketPrice: '', marketStore: '', calcMode: mode, collapsed: false
+    };
+    if (mode === 'direct') ing.directCost = o.directCost != null ? o.directCost : 0;
+    if (mode === 'amortized') {
+      ing.subAmount = o.subAmount != null ? o.subAmount : 0;
+      ing.subPeriod = o.subPeriod || 'monthly';
+      ing.projectsPerMonth = o.projectsPerMonth != null ? o.projectsPerMonth : 1;
+    }
+    if (mode === 'count') {
+      ing.piecesPerPack = o.piecesPerPack != null ? o.piecesPerPack : 0;
+      ing.piecesUsed = o.piecesUsed != null ? o.piecesUsed : 0;
+    }
+    state.ingredients.push(ing);
     return true;
   };
   window.MirbahBridge.addMany = function (items) {
     let n = 0;
     (items || []).forEach(function (it) {
       if (!it || !it.name) return;
-      if (window.MirbahBridge.addIngredient(it.name, it.unit)) {
+      if (window.MirbahBridge.addIngredient(it.name, it.unit, it)) {
         const ing = state.ingredients[state.ingredients.length - 1];
         if (it.pack != null && it.pack !== '') ing.pack = it.pack;
         if (it.price != null && it.price !== '') ing.price = it.price;
+        if (it.qty != null && it.qty !== '') ing.qty = it.qty;
+        if (it.directCost != null) ing.directCost = it.directCost;
+        if (it.subAmount != null) ing.subAmount = it.subAmount;
+        if (it.projectsPerMonth != null) ing.projectsPerMonth = it.projectsPerMonth;
+        if (it.subPeriod) ing.subPeriod = it.subPeriod;
         n++;
       }
     });
@@ -709,152 +794,188 @@
   /* ---------------- بطاقة المكوّن (٣ مراحل) ---------------- */
   function ingredientCard(ing, i, repeatInfo, isCollapsed) {
     const S = window.SmartUnits;
+    const SC = schemas();
+    const mode = ing.calcMode || 'portion';
+    const modes = (SC && SC.CALC_MODES) || {
+      portion: { name: 'استهلاك جزئي', short: 'جزء' },
+      count: { name: 'قطع وعدد', short: 'عدد' },
+      amortized: { name: 'توزيع اشتراك', short: 'اشتراك' },
+      direct: { name: 'تكلفة مباشرة', short: 'مباشر' }
+    };
     const c = Calc.ingredientCost(ing);
     const qtyUnit = ing.qtyUnit || ing.unit || 'g';
     const packUnit = ing.packUnit || ing.unit || 'g';
-    const det = S ? S.purchaseBreakdown({ ...ing, qtyUnit, packUnit }) : null;
+    const packInfo = S ? S.info(packUnit) : { label: packUnit };
+    const useInfo = S ? S.info(qtyUnit) : { label: qtyUnit };
+    const det = (mode === 'portion' && S) ? S.purchaseBreakdown({ ...ing, qtyUnit, packUnit }) : null;
     const rep = repeatInfo || { mode: 'none' };
     const isRepeat = rep.mode === 'repeat';
-    const packInfo = S ? S.info(packUnit) : null;
-    const useInfo = S ? S.info(qtyUnit) : null;
-    const packLbl = det ? det.packLabel : { bought: 'الكمية المشتراة', used: 'الكمية المستخدمة', short: packUnit };
-    const useLbl = S ? S.label(qtyUnit) : packLbl;
-    const cmp = det ? det.compare : { label: 'وحدة' };
+    const isCollapsedNow = !!isCollapsed;
 
-    const summary = det && det.ok
-      ? `مشترياتك ${fmtNumber(det.pack)} ${packInfo ? packInfo.label : ''} بـ ${money(det.price)} · استخدمت ${fmtNumber(det.qty)} ${useInfo ? useInfo.label : ''} · تكلفة الاستخدام <b>${money(det.usedCost)}</b> · المتبقي <b>${fmtNumber(det.leftoverQty)} ${packInfo ? packInfo.label : ''}</b>`
-      : 'أكمل بيانات الشراء والاستخدام ليظهر الملخص.';
+    // شريط الملخص الواحد (لا نكرّر الحسبة)
+    let strip = '';
+    if (mode === 'portion') {
+      if (det && det.ok) {
+        strip = `المستهلك: <b>${money(det.usedCost)}</b> (${det.usedSharePct}%) · المتبقي: ${fmtNumber(det.leftoverQty)} ${packInfo.label} بقيمة <b>${money(det.leftoverValue)}</b> · سعر الوحدة: ${money(det.unitPrice)}/${det.compare.label}`;
+      } else {
+        strip = det && det.reason === 'incompatible'
+          ? 'وحدتا الشراء والاستخدام مختلفتان — اختر وحدة من نفس النوع.'
+          : 'أدخل الكمية المشتراة وسعرها والكمية المستخدمة ليظهر الملخص.';
+      }
+    } else if (mode === 'count') {
+      const per = Calc.num(ing.piecesPerPack) > 0 ? Calc.num(ing.price) / Calc.num(ing.piecesPerPack) : 0;
+      const used = Calc.num(ing.piecesUsed);
+      const left = Math.max(0, Calc.num(ing.piecesPerPack) - used);
+      strip = `المستهلك: <b>${money(c.costUsed)}</b> · ${fmtNumber(used)} قطعة × ${money(per)} · المتبقي ${fmtNumber(left)} من الحزمة`;
+    } else if (mode === 'amortized') {
+      const sub = Calc.num(ing.subAmount);
+      const per = Calc.num(ing.subPeriod === 'yearly' ? '0' : '0');
+      const months = ing.subPeriod === 'yearly' ? 12 : 1;
+      const projects = Math.max(1, Calc.num(ing.projectsPerMonth) || 1);
+      strip = `نصيب المشروع: <b>${money(c.costUsed)}</b> · اشتراك ${money(sub)}/${ing.subPeriod === 'yearly' ? 'سنوي' : 'شهري'} ÷ ${fmtNumber(projects)} مشاريع = ${money(Calc.round2((sub / months) / projects))} لكل مشروع`;
+    } else {
+      strip = `تُضاف كاملة إلى تكلفة هذا الطلب: <b>${money(c.costUsed)}</b> · بلا عبوات أو أوزان`;
+    }
 
     const status = !det ? '' : det.reason === 'incompatible'
-      ? `<p class="df-warn">وحدتا الشراء والاستخدام من نوعين مختلفين (${det.packLabel ? S.groupLabel(packUnit) : ''}/${S.groupLabel(qtyUnit)}). لا يمكن التحويل بين الوزن والحجم دون كثافة موثوقة — اختر وحدة من نفس النوع.</p>`
+      ? `<p class="df-warn">الوحدتان من نوعين مختلفين. لا تحويل بين الوزن والحجم دون كثافة موثوقة.</p>`
       : det.reason === 'no-pack'
         ? `<p class="df-warn">أدخل الكمية المشتراة (أكبر من صفر) لتُحسب التكلفة.</p>`
         : det.reason === 'overuse'
           ? `<p class="df-warn">الكمية المستخدمة أكبر من المشتراة — راجع الأرقام.</p>`
           : '';
 
-    const priceLine = det && det.ok ? `${money(det.unitPrice)} / ${cmp.label}` : '—';
+    const nameRow = `
+      <div class="df-ing-name">
+        <input class="input" data-group="ingredients" data-index="${i}" data-field="name" value="${esc(ing.name)}" placeholder="اسم العنصر" aria-label="اسم العنصر" />
+      </div>`;
 
-    const isCollapsedNow = isCollapsed && det && det.ok;
+    const modeTabs = `<div class="df-mode-tabs" role="tablist" aria-label="نمط الحساب">
+      ${Object.keys(modes).map((k) => `<button type="button" role="tab" aria-selected="${mode === k}" class="df-mode-tab${mode === k ? ' on' : ''}" data-action="ing-mode" data-index="${i}" data-mode="${k}">${modes[k].name}</button>`).join('')}
+    </div>`;
+
+    const unitSel = (field, val) => `<select class="select df-unit" data-group="ingredients" data-index="${i}" data-field="${field}" aria-label="الوحدة">
+      ${unitOptionsFor(val, S ? S.groupOf(val) : null)}
+    </select>`;
+
+    let fields = '';
+    if (mode === 'portion') {
+      fields = `
+        <div class="df-row">
+          <div class="df-inputgroup">
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="pack" value="${esc(ing.pack)}" placeholder="الكمية المشتراة" aria-label="الكمية المشتراة" />
+            ${unitSel('packUnit', packUnit)}
+          </div>
+          <div class="df-inputgroup df-pricegroup">
+            <span class="df-cur">ر.س</span>
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="price" value="${esc(ing.price)}" placeholder="سعر العبوة" aria-label="سعر العبوة" />
+          </div>
+        </div>
+        <div class="df-row">
+          <div class="df-inputgroup">
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="qty" value="${esc(ing.qty)}" placeholder="الكمية المستخدمة" aria-label="الكمية المستخدمة" />
+            ${unitSel('qtyUnit', qtyUnit)}
+          </div>
+          <button type="button" class="df-pricecheck" data-action="check-price" data-index="${i}"
+            ${(!ing.name || Calc.num(ing.pack) <= 0 || Calc.num(ing.price) <= 0) ? 'disabled' : ''}>
+            ${state.priceChecks && state.priceChecks[i] && state.priceChecks[i].loading ? '⏳ يفحص…' : '🔍 فحص السعر'}
+          </button>
+        </div>
+        ${priceCheckBadge(i)}`;
+    } else if (mode === 'count') {
+      fields = `
+        <div class="df-row">
+          <div class="df-inputgroup">
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="piecesPerPack" value="${esc(ing.piecesPerPack)}" placeholder="عدد القطع في الحزمة" aria-label="عدد القطع في الحزمة" />
+            <span class="df-unit-static">قطعة</span>
+          </div>
+          <div class="df-inputgroup df-pricegroup">
+            <span class="df-cur">ر.س</span>
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="price" value="${esc(ing.price)}" placeholder="سعر الحزمة" aria-label="سعر الحزمة" />
+          </div>
+        </div>
+        <div class="df-row">
+          <div class="df-inputgroup">
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="piecesUsed" value="${esc(ing.piecesUsed)}" placeholder="القطع المستخدمة" aria-label="القطع المستخدمة" />
+            <span class="df-unit-static">قطعة</span>
+          </div>
+        </div>`;
+    } else if (mode === 'amortized') {
+      fields = `
+        <div class="df-row">
+          <div class="df-inputgroup df-pricegroup">
+            <span class="df-cur">ر.س</span>
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="subAmount" value="${esc(ing.subAmount)}" placeholder="قيمة الاشتراك" aria-label="قيمة الاشتراك" />
+            <select class="select df-unit" data-group="ingredients" data-index="${i}" data-field="subPeriod" aria-label="دورة الاشتراك">
+              <option value="monthly" ${ing.subPeriod !== 'yearly' ? 'selected' : ''}>شهري</option>
+              <option value="yearly" ${ing.subPeriod === 'yearly' ? 'selected' : ''}>سنوي</option>
+            </select>
+          </div>
+        </div>
+        <div class="df-row">
+          <div class="df-inputgroup">
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="projectsPerMonth" value="${esc(ing.projectsPerMonth)}" placeholder="عدد المشاريع شهريًا" aria-label="عدد المشاريع شهريًا" />
+            <span class="df-unit-static">مشروع/شهر</span>
+          </div>
+        </div>`;
+    } else {
+      fields = `
+        <div class="df-row">
+          <div class="df-inputgroup df-pricegroup">
+            <span class="df-cur">ر.س</span>
+            <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="directCost" value="${esc(ing.directCost)}" placeholder="التكلفة المباشرة لهذا الطلب" aria-label="التكلفة المباشرة" />
+          </div>
+        </div>`;
+    }
+
+    const details = `
+      <details class="df-more">
+        <summary>➕ تفاصيل إضافية اختيارية</summary>
+        <div class="df-more-body">
+          <div class="grid sm:grid-cols-2 gap-2">
+            <div><label class="field-label">العلامة التجارية</label>
+              <input class="input" data-group="ingredients" data-index="${i}" data-field="brand" value="${esc(ing.brand || '')}" placeholder="اختياري" /></div>
+            <div><label class="field-label">المتجر / السوق</label>
+              <input class="input" data-group="ingredients" data-index="${i}" data-field="marketStore" value="${esc(ing.marketStore || '')}" placeholder="اختياري" /></div>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-2 mt-2">
+            <div><label class="field-label">رابط المنتج</label>
+              <input class="input" data-group="ingredients" data-index="${i}" data-field="shopLink" value="${esc(ing.shopLink || '')}" placeholder="https://…" /></div>
+            <div><label class="field-label">سعر السوق للمقارنة</label>
+              <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="marketPrice" value="${ing.marketPrice == null ? '' : esc(ing.marketPrice)}" placeholder="اختياري" /></div>
+          </div>
+          <div class="df-options mt-2">
+            <div>
+              <p class="field-label">نوع السعر</p>
+              <div class="pill-toggle">
+                <button type="button" data-action="price-type" data-index="${i}" data-type="actual" class="${ing.type === 'actual' ? 'on' : ''}">فعلي</button>
+                <button type="button" data-action="price-type" data-index="${i}" data-type="estimated" class="${ing.type !== 'actual' ? 'on' : ''}">تقديري</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>`;
+
     return `
-      <article class="df-ing${isCollapsedNow ? ' is-collapsed' : ''}${isRepeat ? ' is-repeat' : ''}" data-ing="${i}">
+      <article class="df-ing df-ing-compact${isCollapsedNow ? ' is-collapsed' : ''}${isRepeat ? ' is-repeat' : ''}" data-ing="${i}">
         <header class="df-ing-head">
           <button type="button" class="df-ing-toggle" data-action="toggle-ingredient" data-index="${i}" aria-expanded="${isCollapsedNow ? 'false' : 'true'}">
-            <span class="df-ing-no">${arNoSmall(i + 1)}</span>
-            <span class="df-ing-title">${esc(ing.name || 'مكوّن جديد')}</span>
-            <span class="df-ing-cost">${det && det.ok ? money(det.usedCost) : '—'}</span>
+            <span class="df-ing-title">${esc(ing.name || 'عنصر جديد')}</span>
+            <span class="df-mode-badge m-${mode}">${(modes[mode] || modes.portion).short}</span>
+            <span class="df-ing-cost" data-cost="ing-${i}">${money(c.costUsed)}</span>
             <span class="df-ing-chev">${isCollapsedNow ? '▾' : '▴'}</span>
           </button>
-          <button type="button" class="df-ing-del" data-action="del-ingredient" data-index="${i}" aria-label="حذف المكوّن">حذف</button>
+          <button type="button" class="df-ing-del" data-action="del-ingredient" data-index="${i}" aria-label="حذف العنصر">✕</button>
         </header>
 
         <div class="df-ing-body">
-          <section class="df-stage">
-            <div class="df-stage-head"><span class="n">١</span><h4>بيانات المكوّن</h4></div>
-            <div class="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label class="field-label">اسم المكوّن</label>
-                <input class="input" data-group="ingredients" data-index="${i}" data-field="name" value="${esc(ing.name)}" placeholder="مثال: سكر" aria-label="اسم المكوّن" />
-              </div>
-              <div>
-                <label class="field-label">التصنيف / المتجر (اختياري)</label>
-                <input class="input" data-group="ingredients" data-index="${i}" data-field="marketStore" value="${esc(ing.marketStore || '')}" placeholder="مثال: سوق العزيزية" />
-              </div>
-            </div>
-            <div class="grid sm:grid-cols-2 gap-3 mt-2">
-              <div>
-                <label class="field-label">العلامة التجارية (اختياري)</label>
-                <input class="input" data-group="ingredients" data-index="${i}" data-field="brand" value="${esc(ing.brand || '')}" placeholder="لتضييق البحث عن سعر أفضل" />
-              </div>
-              <div>
-                <label class="field-label">رابط المنتج (اختياري)</label>
-                <input class="input" data-group="ingredients" data-index="${i}" data-field="shopLink" value="${esc(ing.shopLink || '')}" placeholder="https://…" />
-              </div>
-            </div>
-          </section>
-
-          <section class="df-stage">
-            <div class="df-stage-head"><span class="n">٢</span><h4>من أين اشتريته وبكم؟</h4></div>
-            <div class="df-fields">
-              <div>
-                <label class="field-label">طريقة الشراء</label>
-                <select class="select" data-group="ingredients" data-index="${i}" data-field="packUnit-group">
-                  ${(S ? ['mass', 'volume', 'count', 'length', 'kitchen', 'custom'] : ['mass', 'volume', 'count', 'length']).map((g) => `<option value="${g}" ${S && S.groupOf(packUnit) === g ? 'selected' : ''}>${S ? S.GROUPS[g].label : g}</option>`).join('')}
-                </select>
-              </div>
-              <div>
-                <label class="field-label">وحدة الشراء</label>
-                <select class="select" data-group="ingredients" data-index="${i}" data-field="packUnit">
-                  ${unitOptionsFor(packUnit, S ? S.groupOf(packUnit) : null)}
-                </select>
-              </div>
-              <div>
-                <label class="field-label">${esc(packLbl.bought)}</label>
-                <input class="input ${det && det.reason === 'no-pack' ? 'input-error' : ''}" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="pack" value="${esc(ing.pack)}" placeholder="مثال: 1000" />
-              </div>
-              <div>
-                <label class="field-label">سعر الشراء (ر.س)</label>
-                <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="price" value="${esc(ing.price)}" placeholder="مثال: 6" />
-              </div>
-            </div>
-            <p class="df-help">مثال: اشتريت ${fmtNumber(det ? det.pack || 1 : 1)} ${packInfo ? packInfo.label : ''} بـ ${money(Calc.num(ing.price) || 0)} — الأدخل هو مبلغ العبوة كاملة.</p>
-          </section>
-
-          <section class="df-stage">
-            <div class="df-stage-head"><span class="n">٣</span><h4>كم استخدمت في هذه الدفعة؟</h4></div>
-            <div class="df-fields">
-              <div>
-                <label class="field-label">وحدة الاستخدام</label>
-                <select class="select" data-group="ingredients" data-index="${i}" data-field="qtyUnit">
-                  ${unitOptionsFor(qtyUnit, S ? S.groupOf(qtyUnit) : null)}
-                </select>
-              </div>
-              <div>
-                <label class="field-label">${esc(useLbl.used)}</label>
-                <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="qty" value="${esc(ing.qty)}" placeholder="مثال: 500" />
-              </div>
-            </div>
-            ${status}
-            ${det && det.ok ? `<div class="df-receipt">
-              <p>اشتريت ${fmtNumber(det.pack)} ${packInfo.label} بـ ${money(det.price)}.</p>
-              <p>استخدمت ${fmtNumber(det.qty)} ${useInfo.label} ← تكلفة الاستخدام <b>${money(det.usedCost)}</b>.</p>
-              <p>المتبقي ${fmtNumber(det.leftoverQty)} ${packInfo.label} · قيمته <b>${money(det.leftoverValue)}</b>.</p>
-              <p class="df-receipt-price">سعر الوحدة: ${priceLine} · نسبة الاستهلاك ${det.usedSharePct}%</p>
-            </div>` : ''}
-          </section>
-
-          <section class="df-stage df-stage-quiet">
-            <div class="df-stage-head"><span class="n">٤</span><h4>الملخص</h4></div>
-            <dl class="df-summary">
-              <div><dt>تكلفة الجزء المستخدم</dt><dd data-cost="ing-${i}">${money(c.costUsed)}</dd></div>
-              <div><dt>المتبقي (قيمة)</dt><dd data-leftover="ing-${i}">${money(c.leftoverValue)}</dd></div>
-              <div><dt>سعر الوحدة</dt><dd>${priceLine}</dd></div>
-            </dl>
-            <div class="df-options">
-              <div>
-                <p class="field-label">نوع السعر</p>
-                <div class="pill-toggle">
-                  <button type="button" data-action="price-type" data-index="${i}" data-type="actual" class="${ing.type === 'actual' ? 'on' : ''}">فعلي</button>
-                  <button type="button" data-action="price-type" data-index="${i}" data-type="estimated" class="${ing.type !== 'actual' ? 'on' : ''}">تقديري</button>
-                </div>
-              </div>
-              <div>
-                <label class="field-label">سعر السوق لنفس العبوة (اختياري)</label>
-                <input class="input" inputmode="decimal" data-group="ingredients" data-index="${i}" data-field="marketPrice" value="${ing.marketPrice == null ? '' : esc(ing.marketPrice)}" placeholder="لمقارنة الشراء" />
-              </div>
-              <div class="price-check-wrap">
-                <button type="button" class="price-check-btn" data-action="check-price" data-index="${i}"
-                  ${(!ing.name || Calc.num(ing.pack) <= 0 || Calc.num(ing.price) <= 0) ? 'disabled' : ''}>
-                  <span class="pc-spark">${state.priceChecks && state.priceChecks[i] && state.priceChecks[i].loading ? '⏳' : '💰'}</span>
-                  ${state.priceChecks && state.priceChecks[i] && state.priceChecks[i].loading ? 'يفحص…' : 'ابحث عن سعر أفضل'}
-                </button>
-                ${priceCheckBadge(i)}
-                <p class="df-help">يفتح بحث «موازن» بنفس الاسم والحجم، ويلوّن السعر إن كان أعلى ٥٪ من سعر السوق الذي أدخلته.</p>
-              </div>
-            </div>
-            ${isRepeat ? `<p class="df-help is-warn">مكرر مع عبوة سابقة: ${money(rep.row.dupCost)} لا تُضاف مرتين.</p>` : ''}
-            ${summary ? `<p class="df-summary-line">${summary}</p>` : ''}
-          </section>
+          ${nameRow}
+          ${modeTabs}
+          ${fields}
+          ${status}
+          <div class="df-ing-strip">${strip}</div>
+          ${isRepeat ? `<p class="df-help is-warn">مكرر مع عبوة سابقة: ${money(rep.row.dupCost)} لا تُضاف مرتين.</p>` : ''}
+          ${details}
         </div>
       </article>`;
   }
@@ -972,18 +1093,34 @@
   /* ---------------- محرر التغليف ---------------- */
   function renderPackagingStep() {
     const rows = state.packaging.map((p, i) => packagingCard(p, i)).join('');
+    const p = activeProfile();
+    const SC = schemas();
+    const sc = (SC && state.productId) ? SC.schemaFor(state.domainId, state.productId) : null;
+    const schemaPkg = (sc && Array.isArray(sc.packaging)) ? sc.packaging : [];
+    const existing = new Set(state.packaging.map((x) => String(x.name || '').trim()));
+    const schemaChips = schemaPkg.map((x) => {
+      const added = existing.has(x.name);
+      return `<button type="button" class="chip chip-sm${added ? ' chip-added' : ''}" data-action="add-packaging-preset" data-name="${esc(x.name)}" ${added ? 'disabled' : ''}>${added ? '✓ ' : '＋ '}${esc(x.name)}</button>`;
+    }).join('');
+    const skip = p.packaging === false
+      ? `<div class="df-skip-pack">
+          <p>${esc(p.packagingNote || 'منتج رقمي بالكامل — لا حاجة لتغليف مادي.')}</p>
+          <button type="button" class="btn btn-line" data-action="skip-packaging">منتج رقمي بالكامل — تخطي خطوة التسليم المادي</button>
+        </div>` : '';
     $('#wizardBody').innerHTML = `
       <div class="fade-up">
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 class="text-2xl font-semibold tracking-tight">التغليف والاستهلاكيات</h3>
-            <p class="text-soft mt-1.5 text-sm max-w-2xl">كل عنصر: عدد القطع في العبوة وسعرها وعدد القطع المستخدمة. يحسب النظام تكلفة التغليف لكل دفعة.</p>
+            <h3 class="text-2xl font-semibold tracking-tight">${esc(p.step5)}</h3>
+            <p class="text-soft mt-1.5 text-sm max-w-2xl">${p.packaging === false ? 'ملفات وتسليم اختياري — يمكنك تخطي هذه الخطوة بالكامل.' : 'كل عنصر: عدد القطع في العبوة وسعرها وعدد القطع المستخدمة. يحسب النظام تكلفة التغليف لكل دفعة. لا تُضاف عناصر التغليف إلى خطوة المكونات.'}</p>
           </div>
           <div class="text-left">
-            <p class="text-xs faint">إجمالي التغليف</p>
+            <p class="text-xs faint">إجمالي ${esc(p.summary && p.summary.pack ? p.summary.pack : 'التغليف')}</p>
             <p class="text-xl font-semibold" data-subtotal="packaging">—</p>
           </div>
         </div>
+        ${skip}
+        ${schemaChips ? `<div class="preset-bar"><p class="field-label">مقترحات خاصة بـ«${esc(state.productName || 'منتجك')}»</p><div class="preset-groups">${schemaChips}</div></div>` : ''}
         <div class="space-y-3 mt-5">${rows || '<p class="text-sm muted">لا توجد عناصر تغليف. أضف عنصرًا.</p>'}</div>
         ${presetBar('packaging', D.PACKAGING_PRESETS, 'أضف عنصر تغليف سريعًا')}
         <button type="button" class="btn btn-secondary mt-4" data-action="add-packaging">＋ إضافة عنصر تغليف</button>
@@ -1314,11 +1451,13 @@
      ============================================================= */
   function totalsBar(r) {
     const ing = r.ingredientsTotal, pkg = r.packagingTotal, op = r.operationalTotal, t = r.timeTotal;
+    const p = activeProfile();
+    const s = p.summary || {};
     return `<div class="df-totals">
       <div class="df-total df-total-main"><span>تكلفة الدفعة</span><b>${money(r.batchTotal)}</b></div>
-      <div class="df-total"><span>المكونات</span><b>${money(ing)}</b></div>
-      <div class="df-total"><span>التغليف</span><b>${money(pkg)}</b></div>
-      <div class="df-total"><span>التشغيل + الوقت</span><b>${money(op + t)}</b></div>
+      <div class="df-total"><span>${esc(s.main || 'المكونات')}</span><b>${money(ing)}</b></div>
+      <div class="df-total"><span>${esc(s.pack || 'التغليف')}</span><b>${money(pkg)}</b></div>
+      <div class="df-total"><span>${esc(s.ops || 'التشغيل + الوقت')}</span><b>${money(op + t)}</b></div>
       <div class="df-total"><span>تكلفة ${outputLabel().one}</span><b>${money(r.unitCost)}</b></div>
     </div>`;
   }
@@ -1907,6 +2046,15 @@
     render();
   }
   function selectProduct(id) {
+    if (id === '__other_product__') {
+      state.productId = id;
+      state.productName = 'منتج آخر';
+      state.ingredients = []; state.packaging = []; state.operational = [];
+      state.units = 1;
+      clearAi();
+      state.step = 'ingredients';
+      return render();
+    }
     const sc = D.getSubcategory(state.domainId, state.subcategoryId);
     const product = sc ? sc.products.find((p) => p.id === id) : null;
     if (!product) return;
@@ -1971,8 +2119,32 @@
         state.ingredients[idx].type = btn.getAttribute('data-type');
         save(); return renderStep();
       }
+      case 'ing-mode': {
+        const ing = state.ingredients[idx];
+        if (!ing) return;
+        const m = btn.getAttribute('data-mode') || 'portion';
+        ing.calcMode = m;
+        if (m === 'portion') {
+          if (!ing.packUnit) ing.packUnit = ing.qtyUnit || 'g';
+          if (!ing.qtyUnit) ing.qtyUnit = ing.packUnit;
+        }
+        if (m === 'count') {
+          if (ing.piecesPerPack == null) ing.piecesPerPack = 0;
+          if (ing.piecesUsed == null) ing.piecesUsed = 0;
+        }
+        if (m === 'amortized') {
+          if (ing.subAmount == null) ing.subAmount = 0;
+          if (ing.projectsPerMonth == null) ing.projectsPerMonth = 1;
+          if (!ing.subPeriod) ing.subPeriod = 'monthly';
+        }
+        if (m === 'direct' && ing.directCost == null) ing.directCost = 0;
+        clearAi();
+        return renderStep();
+      }
       case 'add-ingredient': {
-        state.ingredients.push({ name: '', qty: 0, qtyUnit: 'g', pack: 0, packUnit: 'g', price: 0, type: 'estimated', marketPrice: '', marketStore: '' });
+        const p = activeProfile();
+        const u = (p.units && p.units[0]) || 'g';
+        state.ingredients.push({ name: '', qty: 0, qtyUnit: u, pack: 0, packUnit: u, price: 0, type: 'estimated', marketPrice: '', marketStore: '', calcMode: p.defaultCalcMode || 'portion', piecesPerPack: 0, piecesUsed: 0, subAmount: 0, subPeriod: 'monthly', projectsPerMonth: 1, directCost: 0 });
         return renderStep();
       }
       case 'add-ingredient-preset': {
@@ -2056,6 +2228,12 @@
       case 'add-packaging': {
         state.packaging.push({ name: '', piecesPerPack: 0, packPrice: 0, piecesUsed: 0 });
         return renderStep();
+      }
+      case 'skip-packaging': {
+        state.packaging = [];
+        clearAi();
+        state.step = 'operations';
+        return render();
       }
       case 'del-packaging': {
         state.packaging.splice(idx, 1); clearAi(); return renderStep();
@@ -2181,7 +2359,7 @@
     else item[field] = val;
     clearAi();
     // دفتر V3: تحديث بطاقة المكوّن فورًا بعد التعديل (التسميات والمتبقي والملخص)
-    if (group === 'ingredients' && ['name', 'pack', 'price', 'packUnit', 'qtyUnit', 'qty', 'brand', 'marketPrice', 'marketStore', 'packUnit-group', 'qtyUnit-group'].includes(field)) {
+    if (group === 'ingredients' && ['name', 'pack', 'price', 'packUnit', 'qtyUnit', 'qty', 'brand', 'marketPrice', 'marketStore', 'packUnit-group', 'qtyUnit-group', 'directCost', 'subAmount', 'subPeriod', 'projectsPerMonth', 'piecesPerPack', 'piecesUsed'].includes(field)) {
       if (state.step === 'ingredients' && typeof liveIngredientUpdate === 'function') {
         const active = document.activeElement;
         const caret = active && active.selectionStart != null ? active.selectionStart : null;

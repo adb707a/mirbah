@@ -17,6 +17,11 @@
     // الحجم — الأساس ملليلتر
     ml:  { label: 'ملليلتر',   plural: 'ملليلتر',  group: 'volume', factor: 1 },
     l:   { label: 'لتر',       plural: 'لترات',    group: 'volume', factor: 1000 },
+    tola:{ label: 'تولة',      plural: 'تولات',    group: 'volume', factor: 12 },
+    shot:{ label: 'شوت',       plural: 'شوتات',    group: 'volume', factor: 30 },
+    // أوزان تقليدية للعود والبخور
+    ounce:{ label: 'أوقية',    plural: 'أوقيات',   group: 'mass',   factor: 28.3495 },
+    thumn:{ label: 'ثمن',      plural: 'أثمان',    group: 'mass',   factor: 125 },
     // العدد — الأساس حبة
     pc:    { label: 'حبة',    plural: 'حبات',    group: 'count', factor: 1 },
     piece: { label: 'قطعة',   plural: 'قطع',     group: 'count', factor: 1 },
@@ -28,15 +33,24 @@
     carton:{ label: 'صندوق',  plural: 'صناديق',  group: 'count', factor: 1 },
     set:   { label: 'مجموعة', plural: 'مجموعات', group: 'count', factor: 1 },
     spool: { label: 'بكرة',   plural: 'بكرات',   group: 'count', factor: 1 },
+    skein: { label: 'شلّة',   plural: 'شلّات',   group: 'count', factor: 1 },
+    pump:  { label: 'ضغطة',   plural: 'ضغطات',   group: 'count', factor: 1 },
+    dozen: { label: 'درزن',   plural: 'درازن',   group: 'count', factor: 12 },
+    roll:  { label: 'رول',    plural: 'رولات',   group: 'count', factor: 1 },
+    license:{ label: 'رخصة/ملف', plural: 'رخص/ملفات', group: 'count', factor: 1 },
+    subscription:{ label: 'اشتراك', plural: 'اشتراكات', group: 'count', factor: 1 },
     // الطول — الأساس متر
     mm: { label: 'مليمتر',  plural: 'مليمتر',  group: 'length', factor: 0.001 },
     cm: { label: 'سنتيمتر', plural: 'سنتيمتر', group: 'length', factor: 0.01 },
     m:  { label: 'متر',     plural: 'أمتار',   group: 'length', factor: 1 },
+    yard:{ label: 'ياردة',  plural: 'ياردات',  group: 'length', factor: 0.9144 },
     // منزلي / مخصص — لا يُحوَّل تلقائيًا (لايوجد معامل موثوق)
     tsp:  { label: 'ملعقة صغيرة', plural: 'ملاعق صغيرة', group: 'kitchen', factor: null, custom: true },
     tbsp: { label: 'ملعقة كبيرة', plural: 'ملاعق كبيرة', group: 'kitchen', factor: null, custom: true },
     cup:  { label: 'كوب',        plural: 'أكواب',       group: 'kitchen', factor: null, custom: true },
     serving: { label: 'حصة',     plural: 'حصص',         group: 'kitchen', factor: null, custom: true },
+    hour: { label: 'ساعة',       plural: 'ساعات',       group: 'custom', factor: null, custom: true },
+    project: { label: 'مشروع',   plural: 'مشاريع',      group: 'custom', factor: null, custom: true },
     custom:  { label: 'وحدة خاصة', plural: 'وحدات خاصة', group: 'custom', factor: null, custom: true }
   };
 
@@ -67,13 +81,26 @@
     carton:{ bought: 'عدد الصناديق المشتراة', used: 'عدد الصناديق المستخدمة', short: 'صندوق' },
     set:   { bought: 'عدد المجموعات المشتراة', used: 'عدد المجموعات المستخدمة', short: 'مجموعة' },
     spool: { bought: 'عدد البكرات المشتراة',  used: 'عدد البكرات المستخدمة',  short: 'بكرة' },
+    skein: { bought: 'عدد الشلّات المشتراة',  used: 'عدد الشلّات المستخدمة',  short: 'شلّة' },
+    pump:  { bought: 'عدد الضغطات المشتراة',  used: 'عدد الضغطات المستخدمة',  short: 'ضغطة' },
+    dozen: { bought: 'عدد الدرازن المشتراة',  used: 'عدد الدرازن المستخدمة',  short: 'درزن' },
+    roll:  { bought: 'عدد الرولات المشتراة',  used: 'عدد الرولات المستخدمة',  short: 'رول' },
+    license:{ bought: 'عدد الرخص/الملفات',    used: 'المستخدم من الرخصة',     short: 'رخصة' },
+    subscription:{ bought: 'الاشتراكات',       used: 'المستخدم من الاشتراك',   short: 'اشتراك' },
+    tola:  { bought: 'عدد التولات المشتراة',  used: 'التولات المستخدمة',      short: 'تولة' },
+    shot:  { bought: 'عدد الشوتات المشتراة',  used: 'الشوتات المستخدمة',      short: 'شوت' },
+    ounce: { bought: 'الأوقيات المشتراة',     used: 'الأوقيات المستخدمة',     short: 'أوقية' },
+    thumn: { bought: 'الأثمان المشتراة',      used: 'الأثمان المستخدمة',      short: 'ثمن' },
     mm:    { bought: 'الطول المشترى',  used: 'الطول المستخدم',  short: 'مم' },
     cm:    { bought: 'الطول المشترى',  used: 'الطول المستخدم',  short: 'سم' },
     m:     { bought: 'الطول المشترى',  used: 'الطول المستخدم',  short: 'م' },
+    yard:  { bought: 'الياردات المشتراة', used: 'الياردات المستخدمة', short: 'ياردة' },
     tsp:   { bought: 'عدد الملاعق الصغيرة المشتراة', used: 'عدد الملاعق الصغيرة المستخدمة', short: 'ملعقة ص' },
     tbsp:  { bought: 'عدد الملاعق الكبيرة المشتراة', used: 'عدد الملاعق الكبيرة المستخدمة', short: 'ملعقة ك' },
     cup:   { bought: 'عدد الأكواب المشتراة', used: 'عدد الأكواب المستخدمة', short: 'كوب' },
     serving:{ bought: 'عدد الحصص المشتراة', used: 'عدد الحصص المستخدمة', short: 'حصة' },
+    hour:  { bought: 'عدد الساعات', used: 'الساعات المستخدمة', short: 'ساعة' },
+    project:{ bought: 'عدد المشاريع', used: 'المشاريع المستخدمة', short: 'مشروع' },
     custom:{ bought: 'الكمية المشتراة', used: 'الكمية المستخدمة', short: 'وحدة' }
   };
 
