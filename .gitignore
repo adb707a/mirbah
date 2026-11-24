@@ -1,6 +1,19 @@
-﻿server/data/*.db
+﻿# Environment / secrets
+.env
+.env.*
+!.env.example
+server/.env
+
+# Database & runtime data
+server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
 server/data/backups/
-server/.env
+
+# Logs / temp
 *.log
+*.err
+*.tmp
+
+# Dependencies (if any are ever added)
+node_modules
