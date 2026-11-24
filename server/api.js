@@ -16,10 +16,7 @@ function json(res, status, obj, extraHeaders) {
   const headers = Object.assign({
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Cache-Control': 'no-store',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Cache-Control': 'no-store'
   }, extraHeaders || {});
   res.writeHead(status, headers);
   res.end(body);
@@ -56,7 +53,26 @@ function createApi(dbOrRef, opts) {
       return typeof target[prop] === 'function' ? target[prop].bind(target) : target[prop];
     }
   });
-  const ipOf = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || '';
+  const TRUST_PROXY = process.env.MIRBAH_TRUST_PROXY === '1';
+  function normalizeIp(value) {
+    let ip = String(value || '').trim();
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+    const bracketed = ip.match(/^\[([^\]]+)\](?::\d+)?$/);
+    if (bracketed) ip = bracketed[1];
+    if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(ip)) ip = ip.replace(/:\d+$/, '');
+    return ip;
+  }
+  // X-Forwarded-For is only meaningful from a trusted reverse proxy. When the
+  // opt-in is absent we use the real socket address, so it cannot be spoofed.
+  const ipOf = (req) => {
+    if (TRUST_PROXY) {
+      const xff = req.headers['x-forwarded-for'];
+      if (xff) return normalizeIp(String(xff).split(',')[0]);
+      const real = req.headers['x-real-ip'];
+      if (real) return normalizeIp(real);
+    }
+    return normalizeIp(req.socket && req.socket.remoteAddress) || '';
+  };
 
   function currentUser(req) {
     const cookies = A.parseCookies(req.headers.cookie);

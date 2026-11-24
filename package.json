@@ -9,7 +9,10 @@
     "dev": "node tools/start-platform.js",
     "test": "node tests/platform.test.js",
     "test:calc": "node public/tests/calc.test.js && node public/tests/suggestions.test.js",
+    "test:security": "node tests/security.test.js",
+    "test:all": "npm test && npm run test:calc && node tests/suggestions.test.js && npm run test:security",
     "backup": "node -e \"console.log(require('./server/db').backup('cli'))\"",
+    "owner:reset": "node tools/reset-owner-password.js",
     "db:reset": "node tools/reset-db.js --force"
   },
   "engines": { "node": ">=22" }

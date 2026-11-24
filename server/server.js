@@ -17,7 +17,12 @@ const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const AUTH_DIR = path.join(PUBLIC_DIR, 'auth');
 const PORT = Number(process.env.PORT || 8788);
+// Loopback by default: the platform is a local tool unless the operator opts in.
+const HOST = process.env.MIRBAH_BIND_HOST || '127.0.0.1';
 const DEV = process.env.NODE_ENV !== 'production';
+// Cross-origin reads are only needed for the public catalog/health. Empty = same-origin only.
+const CORS_ORIGINS = String(process.env.MIRBAH_CORS_ORIGINS || '')
+  .split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
 
 const { createApi } = require('./api.js');
 const { guard } = require('./guard.js');
@@ -56,6 +61,22 @@ function file(res, fp) {
 }
 function redirect(res, to) { res.writeHead(302, { Location: to }); res.end(); }
 
+/** CORS is limited to read-only public endpoints and an explicit allowlist. */
+function corsHeaders(req, pathname) {
+  const publicRead = pathname === '/api/health' || pathname.startsWith('/api/public/');
+  if (!publicRead) return {};
+  const raw = req.headers.origin;
+  if (!raw || !CORS_ORIGINS.length) return {};
+  const origin = String(raw).replace(/\/+$/, '');
+  if (!CORS_ORIGINS.includes(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
 function sessionUser(req) {
   const c = A.parseCookies(req.headers.cookie);
   return A.readSession(global.__MIRBAH_DB__, c[A.COOKIE_NAME]);
@@ -85,7 +106,10 @@ function serveArea(req, res, m, area) {
   }
   const rel = (m && m[1]) ? m[1] : 'index.html';
   const fp = path.normalize(path.join(area.base, rel));
-  if (!fp.startsWith(area.base)) return reply(res, 403, 'text/plain; charset=utf-8', 'Forbidden');
+  const inside = path.relative(area.base, fp);
+  if (inside === '..' || inside.startsWith('..' + path.sep) || path.isAbsolute(inside)) {
+    return reply(res, 403, 'text/plain; charset=utf-8', 'Forbidden');
+  }
   let target = fp;
   try { if (fs.statSync(target).isDirectory()) target = path.join(target, 'index.html'); } catch (e) {}
   return file(res, target);
@@ -93,9 +117,14 @@ function serveArea(req, res, m, area) {
 
 const server = http.createServer((req, res) => {
   try {
-    if (req.method === 'OPTIONS') return reply(res, 204, 'text/plain; charset=utf-8', '');
-
     const pathname = (req.url || '/').split('?')[0];
+    const cors = corsHeaders(req, pathname);
+    Object.keys(cors).forEach((k) => res.setHeader(k, cors[k]));
+
+    if (req.method === 'OPTIONS') {
+      if (Object.keys(cors).length) { res.writeHead(204); res.end(); return; }
+      return reply(res, 204, 'text/plain; charset=utf-8', '');
+    }
 
     if (pathname === '/api/health') {
       const db = global.__MIRBAH_DB__;
@@ -139,8 +168,11 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log('  الخادم يخدم على المنفذ ' + PORT);
+server.listen(PORT, HOST, () => {
+  console.log('  الخادم يخدم على ' + HOST + ':' + PORT);
+  if (HOST === '0.0.0.0' || HOST === '::') {
+    console.log('  ⚠ مفتوح على كل واجهات الشبكة — لا تفعل ذلك دون جدار حماية أو وكيل موثوق.');
+  }
 });
 
 module.exports = server;

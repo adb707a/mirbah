@@ -6,8 +6,10 @@
    هذا الفصل يجعل مسار الطلبات مسطّحًا ومقروءًا وقابلًا للاختبار.
 */
 const path = require('path');
+require('./load-env.js');
 const dbm = require('../server/db.js');
 const A = require('../server/auth.js');
+const C = require('./owner-credentials.js');
 
 (async () => {
   try {
@@ -26,12 +28,26 @@ const A = require('../server/auth.js');
   // حساب المالك الأول (مرة واحدة)
   const owners = db.prepare("SELECT COUNT(*) n FROM users WHERE role='owner'").get().n;
   if (!owners) {
-    const email = process.env.MIRBAH_OWNER_EMAIL;
-    const password = process.env.MIRBAH_OWNER_PASSWORD;
-    if (email && password && password.length >= 12) {
+    const email = (process.env.MIRBAH_OWNER_EMAIL || 'owner@mirbah.local').trim();
+    const supplied = process.env.MIRBAH_OWNER_PASSWORD;
+    const generated = !supplied;
+    const password = supplied || C.generatePassword(28);
+    if (password.length < 12) {
+      console.error('[owner] MIRBAH_OWNER_PASSWORD يجب أن يكون 12 حرفًا على الأقل.');
+    } else {
+      let credentialsFile = null;
+      if (generated) {
+        try {
+          credentialsFile = C.writeCredentials(email, password);
+        } catch (e) {
+          console.error('[owner] تعذر حفظ بيانات المالك المؤقتة:', e && e.message);
+          process.exit(1);
+        }
+      }
       const id = A.createUser(db, { email, name: process.env.MIRBAH_OWNER_NAME || 'مالك مِرْباح', password, role: 'owner' });
-      A.audit(db, { id, role: 'owner' }, 'owner.bootstrap', 'user', id, { source: 'env' }, '');
+      A.audit(db, { id, role: 'owner' }, 'owner.bootstrap', 'user', id, { source: generated ? 'generated' : 'env' }, '');
       global.__MIRBAH_OWNER_CREATED__ = true;
+      global.__MIRBAH_OWNER_CREDENTIALS_FILE__ = credentialsFile;
     }
   }
 
@@ -43,8 +59,13 @@ const A = require('../server/auth.js');
     console.log('  الكتالوج: ' + db.prepare('SELECT COUNT(*) n FROM catalog_activities').get().n + ' نشاط · ' +
       db.prepare('SELECT COUNT(*) n FROM catalog_products').get().n + ' منتج · ' +
       db.prepare('SELECT COUNT(*) n FROM catalog_suggestions').get().n + ' اقتراح');
-    if (global.__MIRBAH_OWNER_CREATED__) console.log('  أُنشئ حساب المالك من متغيرات البيئة.');
-    else if (!db.prepare("SELECT COUNT(*) n FROM users WHERE role='owner'").get().n) {
+    if (global.__MIRBAH_OWNER_CREATED__) {
+      console.log('  أُنشئ حساب المالك. بيانات الدخول المؤقتة في: ' +
+        (global.__MIRBAH_OWNER_CREDENTIALS_FILE__ || 'متغيرات البيئة (MIRBAH_OWNER_*)'));
+      if (global.__MIRBAH_OWNER_CREDENTIALS_FILE__) {
+        console.log('  احفظ كلمة المرور ثم احذف الملف. لتغييرها لاحقًا: npm run owner:reset');
+      }
+    } else if (!db.prepare("SELECT COUNT(*) n FROM users WHERE role='owner'").get().n) {
       console.log('  ⚠ لا يوجد مالك: عيّن MIRBAH_OWNER_EMAIL و MIRBAH_OWNER_PASSWORD (12+ حرفًا).');
     }
   }, 80);

@@ -9,7 +9,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 
 const PORT = 8891;
-const BASE = 'http://localhost:' + PORT;
+const BASE = 'http://127.0.0.1:' + PORT;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'mb-sug-'));
 const H = { 'Content-Type': 'application/json', 'X-Requested-With': 'mirbah' };
 let pass = 0, fail = 0;

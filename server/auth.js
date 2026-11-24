@@ -64,6 +64,16 @@ function verifyTotp(secret, code) {
 const newTotpSecret = () => base32Encode(crypto.randomBytes(20));
 
 /* ---------- كوكيز ---------- */
+const SECURE_COOKIE = (() => {
+  const explicit = process.env.MIRBAH_SECURE_COOKIE;
+  if (explicit === '1') return true;
+  if (explicit === '0') return false;
+  // Secure by default on production/HTTPS. Local HTTP development stays usable.
+  if (process.env.NODE_ENV === 'production') return true;
+  return /^https:/i.test(process.env.MIRBAH_PUBLIC_ORIGIN || '');
+})();
+const COOKIE_FLAGS = 'Path=/; HttpOnly; SameSite=Strict' + (SECURE_COOKIE ? '; Secure' : '') + '; Priority=High';
+
 function parseCookies(header) {
   const out = {};
   String(header || '').split(';').forEach((p) => {
@@ -74,10 +84,9 @@ function parseCookies(header) {
   return out;
 }
 function sessionCookie(sid, maxAgeSec) {
-  return `${COOKIE_NAME}=${sid}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSec}` +
-    (process.env.MIRBAH_SECURE_COOKIE === '1' ? '; Secure' : '');
+  return `${COOKIE_NAME}=${sid}; ${COOKIE_FLAGS}; Max-Age=${maxAgeSec}`;
 }
-const clearCookie = () => `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`;
+const clearCookie = () => `${COOKIE_NAME}=; ${COOKIE_FLAGS}; Max-Age=0`;
 
 /* ---------- جلسات ---------- */
 function createSession(db, userId, ip, ua, strength) {

@@ -6,7 +6,7 @@
  * (نفس المسار الذي يستخدمه المستخدم) — لتجربة اللوحات قبل تسجيل حسابك.
  */
 const H = { 'Content-Type': 'application/json', 'X-Requested-With': 'mirbah' };
-const BASE = 'http://localhost:' + (process.env.PORT || 8788);
+const BASE = 'http://127.0.0.1:' + (process.env.PORT || 8788);
 const EMAIL = process.env.DEMO_EMAIL || 'demo@mirbah.local';
 const PASS = process.env.DEMO_PASSWORD || 'Demo-Trader-2026';
 

@@ -3,8 +3,9 @@ chcp 65001 >nul
 title Mirbah - platform server
 cd /d "%~dp0"
 set PORT=8788
-set MIRBAH_OWNER_EMAIL=owner@mirbah.local
-set MIRBAH_OWNER_PASSWORD=Mirbah-Owner-2026!
+rem No credentials here. On first run Mirbah creates the owner locally and
+rem writes a one-time password to server\data\owner-credentials.txt (not in Git).
+rem Change it after first login, or run: npm run owner:reset
 
 echo.
 echo  MIRBAH  http://localhost:8788

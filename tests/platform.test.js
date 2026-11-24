@@ -11,7 +11,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 
 const PORT = 8899;
-const BASE = 'http://localhost:' + PORT;
+const BASE = 'http://127.0.0.1:' + PORT;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'mirbah-test-'));
 const DB = path.join(TMP, 'test.db');
 

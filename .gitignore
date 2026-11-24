@@ -4,6 +4,16 @@
 !.env.example
 server/.env
 
+# Sensitive material — never commit
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+secrets.json
+*.local.json
+server/data/owner-credentials.txt
+
 # Database & runtime data
 server/data/*.db
 server/data/*.db-shm

@@ -17,7 +17,7 @@
 ## 🛠️ التقنية
 
 - **الخادم**: Node.js (≥22) · `node:sqlite` (قاعدة SQLite مدمجة) · جلسات كوكي.
-- **الواجهة**: HTML/CSS/JS عادي (Tailwind عبر CDN) · Chart.js.
+- **الواجهة**: HTML/CSS/JS عادي (Tailwind وChart.js محليًا بدون CDN).
 - **الاختبارات**: `node:test` — **51 اختبار منصة + 31 حساب + 11 اقتراح** (كلها خضراء).
 
 ## 🚀 التشغيل المحلي
@@ -28,7 +28,18 @@ npm start
 
 ثم افتح `http://localhost:8788/` (الحاسبة)، و`/login` (دخول التاجر)، و`/owner-admin` (لوحة المالك).
 
-حسابات تجريبية (محلية فقط): تاجر `demo@mirbah.local` / `Demo-Trader-2026` · مالك `owner@mirbah.local` / `Mirbah-Owner-2026!`.
+اختياريًا: انسخ `server/.env.example` إلى `server/.env` (مستثنى من Git) لإعداد المنفذ أو الشبكة أو HTTPS.
+
+حسابات تجريبية (محلية فقط): تاجر `demo@mirbah.local` / `Demo-Trader-2026` — حساب عرض بلا بيانات حقيقية، لا تستخدمه في الإنتاج. **المالك** يُنشأ عند أول تشغيل بكلمة مرور عشوائية تُحفظ في `server/data/owner-credentials.txt` (مستثنى من Git)، أو عيّن `MIRBAH_OWNER_EMAIL` و`MIRBAH_OWNER_PASSWORD` قبل أول تشغيل. لتغييرها لاحقًا: `npm run owner:reset` (يولّد كلمة جديدة ويبطل كل جلسات المالك).
+
+## 🔐 ملاحظات أمنية للتشغيل
+
+- **الاستماع محلي فقط:** الخادم يستمع افتراضيًا على `127.0.0.1`. للوصول من جهاز آخر في شبكة موثوقة: `MIRBAH_BIND_HOST=0.0.0.0` مع جدار حماية.
+- **HTTPS والكوكيز:** الكوكي `Secure` تلقائيًا عند `NODE_ENV=production` أو `MIRBAH_PUBLIC_ORIGIN=https://...`. للتطوير المحلي فوق HTTP يمكن `MIRBAH_SECURE_COOKIE=0` صراحةً.
+- **الوكيل العكسي:** لا تفعّل `MIRBAH_TRUST_PROXY=1` إلا خلف وكيل موثوق يعيد كتابة `X-Forwarded-For`؛ بدونه يُستخدم عنوان المقبس الحقيقي.
+- **CORS:** مقفل افتراضيًا (same-origin). للقراءة العامة من أصل آخر: `MIRBAH_CORS_ORIGINS=https://example.com` — ويقتصر على `/api/public/*` و`/api/health`.
+- **الملفات الحساسة:** `.env` وقاعدة البيانات و`server/data/owner-credentials.txt` و`*.key` و`*.pem` و`secrets.json` مستثناة من Git.
+- بعد أول دخول للمالك: احفظ كلمة المرور في مدير كلمات المرور، ثم احذف ملف البيانات المؤقتة وغيّر الكلمة عند الحاجة.
 
 ## 📂 البنية
 
